@@ -37,15 +37,15 @@ const testimonials = [
 
 export function Testimonials() {
   return (
-    <section className="px-6 py-24 md:py-36">
+    <section className="px-6 py-20 md:py-24">
       <div className="mx-auto max-w-5xl">
-        <div className="reveal mb-16 text-center">
+        <div className="reveal-blur mb-12 text-center">
           <span className="mb-4 inline-block rounded-full border border-[rgba(255,255,255,0.1)] px-4 py-1 text-xs uppercase tracking-widest text-[#666666]">
             What Landlords Say
           </span>
           <h2
-            className="font-serif font-extrabold tracking-[-0.03em] text-[#ffffff]"
-            style={{ fontSize: "clamp(32px, 4vw, 54px)" }}
+            className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
+            style={{ fontSize: "clamp(32px, 4vw, 54px)", lineHeight: "1.1" }}
           >
             They switched.
             <br />
@@ -53,13 +53,13 @@ export function Testimonials() {
           </h2>
         </div>
 
-        <div className="reveal grid gap-4 md:grid-cols-2">
-          {testimonials.map((t) => (
+        <div className="grid gap-4 md:grid-cols-2">
+          {testimonials.map((t, idx) => (
             <div
               key={t.author}
-              className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-6 transition-colors hover:border-[rgba(255,255,255,0.12)]"
+              className={`reveal-blur stagger-${idx + 1} rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-6 transition-colors hover:border-[rgba(255,255,255,0.12)]`}
             >
-              <p className="mb-6 text-base leading-relaxed text-[#999999]">
+              <p className="mb-6 text-base leading-[1.65] text-[#999999]">
                 {'"'}{t.quote}{'"'}
               </p>
               <div className="flex items-center gap-3">

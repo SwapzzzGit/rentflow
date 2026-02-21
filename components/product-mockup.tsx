@@ -37,8 +37,8 @@ const statusColors: Record<string, string> = {
 
 export function ProductMockup() {
   return (
-    <section className="relative px-6 pb-16">
-      <div className="mx-auto max-w-6xl">
+    <section className="relative px-6 pb-12">
+      <div className="reveal-blur mx-auto max-w-6xl">
         {/* Browser Frame */}
         <div className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] p-1 shadow-2xl">
           {/* Top Bar */}
@@ -83,7 +83,7 @@ export function ProductMockup() {
             {/* Main Content */}
             <div className="flex-1 p-4">
               {/* Stats Row */}
-              <div className="mb-4 grid grid-cols-3 gap-3">
+              <div className="reveal-blur mb-4 grid grid-cols-3 gap-3">
                 {[
                   { label: "Monthly Rent", value: "$12,400", change: "+8.2%" },
                   { label: "Paid", value: "8/10 tenants", change: "On track" },
@@ -94,7 +94,7 @@ export function ProductMockup() {
                     className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.04)] p-3"
                   >
                     <div className="text-xs text-[#666666]">{stat.label}</div>
-                    <div className="mt-1 text-lg font-semibold text-[#ffffff]">{stat.value}</div>
+                    <div className="mt-1 text-lg font-semibold tracking-[-0.02em] text-[#ffffff]">{stat.value}</div>
                     <div className="mt-0.5 text-xs text-[#22C55E]">{stat.change}</div>
                   </div>
                 ))}
@@ -160,7 +160,7 @@ export function ProductMockup() {
         </div>
 
         {/* Glow below */}
-        <div className="relative mx-auto h-10 w-2/3">
+        <div className="relative mx-auto h-8 w-2/3">
           <div className="absolute inset-0 bg-[#E8392A] opacity-20 blur-3xl" />
         </div>
       </div>

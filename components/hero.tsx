@@ -14,9 +14,11 @@ export function Hero() {
 
       {/* Headline */}
       <h1
-        className="animate-fade-up font-serif font-extrabold leading-[1.05] tracking-[-0.03em] text-[#ffffff]"
+        className="animate-fade-up font-serif font-extrabold text-[#ffffff]"
         style={{
           fontSize: "clamp(48px, 7.5vw, 88px)",
+          lineHeight: "1.02",
+          letterSpacing: "-0.035em",
           animationDelay: "120ms",
         }}
       >
@@ -27,7 +29,7 @@ export function Hero() {
 
       {/* Subheadline */}
       <p
-        className="animate-fade-up mx-auto mt-6 max-w-[520px] text-lg leading-relaxed text-[#666666]"
+        className="animate-fade-up mx-auto mt-6 max-w-[520px] text-lg leading-[1.65] text-[#666666]"
         style={{ animationDelay: "240ms" }}
       >
         One app replaces five tools. Rent tracking, expenses,

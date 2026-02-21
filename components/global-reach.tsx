@@ -46,13 +46,9 @@ export function GlobalReach() {
 
       const angle = time * 0.3
 
-      // Draw wireframe-style cube faces
       const faces = [
-        // Front
         { points: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]], fill: "rgba(15, 23, 42, 0.6)" },
-        // Top
         { points: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]], fill: "rgba(30, 58, 138, 0.4)" },
-        // Right
         { points: [[1, -1, -1], [1, -1, 1], [1, 1, 1], [1, 1, -1]], fill: "rgba(29, 78, 216, 0.3)" },
       ]
 
@@ -85,7 +81,6 @@ export function GlobalReach() {
         ctx.stroke()
       })
 
-      // Glow
       ctx.shadowColor = "rgba(59, 130, 246, 0.5)"
       ctx.shadowBlur = 80
 
@@ -103,33 +98,39 @@ export function GlobalReach() {
   }, [])
 
   return (
-    <section className="px-6 py-24 md:py-32">
-      <div className="reveal mx-auto max-w-4xl text-center">
+    <section className="px-6 py-20 md:py-24">
+      <div className="reveal-blur mx-auto max-w-4xl text-center">
         <span className="mb-4 inline-block text-xs uppercase tracking-widest text-[#3B82F6]">
           Global Reach
         </span>
         <h2
-          className="font-serif font-extrabold tracking-[-0.03em] text-[#ffffff]"
-          style={{ fontSize: "clamp(32px, 4vw, 54px)" }}
+          className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
+          style={{ fontSize: "clamp(32px, 4vw, 54px)", lineHeight: "1.1" }}
         >
           One app. Three countries.
           <br />
           Zero complexity.
         </h2>
-        <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[#666666]">
+        <p className="mx-auto mt-4 max-w-lg text-base leading-[1.65] text-[#666666]">
           Auto-detects your currency and date format. Switch between USD, GBP, and AUD in settings.
         </p>
       </div>
 
-      <div className="mx-auto flex items-center justify-center overflow-hidden">
+      <div className="reveal-fade relative mx-auto flex items-center justify-center overflow-hidden">
+        {/* Blue radial glow */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+          style={{ background: "radial-gradient(ellipse, rgba(59,130,246,0.1), transparent)" }}
+          aria-hidden="true"
+        />
         <canvas
           ref={canvasRef}
-          className="h-[250px] w-full max-w-[500px] md:h-[350px]"
+          className="h-[220px] w-full max-w-[500px] md:h-[300px]"
           aria-hidden="true"
         />
       </div>
 
-      <div className="reveal flex flex-wrap items-center justify-center gap-4">
+      <div className="reveal-blur flex flex-wrap items-center justify-center gap-4">
         {countries.map((c) => (
           <span
             key={c.currency}

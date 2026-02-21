@@ -35,13 +35,10 @@ export function BuildSection() {
       const centerY = h / 2
       const size = Math.min(w, h) * 0.35
 
-      // Draw two isometric-ish cards
       for (let j = 0; j < 2; j++) {
         ctx.save()
         ctx.translate(centerX + j * 15, centerY + j * 10)
         ctx.rotate(-0.15 + Math.sin(time * 0.4) * 0.03)
-
-        // Skew for isometric look
         ctx.transform(1, -0.2, 0.3, 1, 0, 0)
 
         ctx.shadowColor = "rgba(59, 130, 246, 0.4)"
@@ -75,13 +72,13 @@ export function BuildSection() {
   }, [])
 
   return (
-    <section className="px-6 py-24 md:py-32">
-      <div className="reveal mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
+    <section className="px-6 py-20 md:py-24">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
         {/* Left - Headline */}
-        <div>
+        <div className="reveal-blur">
           <h2
-            className="font-serif font-extrabold leading-[1.1] tracking-[-0.03em] text-[#ffffff]"
-            style={{ fontSize: "clamp(40px, 5vw, 64px)" }}
+            className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
+            style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: "1.1" }}
           >
             Built for
             <br />
@@ -91,7 +88,7 @@ export function BuildSection() {
             <br />
             business.
           </h2>
-          <p className="mt-6 max-w-md text-base leading-relaxed text-[#666666]">
+          <p className="mt-6 max-w-md text-base leading-[1.65] text-[#666666]">
             Whether you have 1 property or 20, RentFlow scales with you. Multi-currency for US, UK, and Australia. Works on any device. No training needed.
           </p>
           <div className="mt-6 flex flex-col gap-3">
@@ -105,10 +102,16 @@ export function BuildSection() {
         </div>
 
         {/* Right - Blue 3D Object */}
-        <div className="flex items-center justify-center overflow-hidden">
+        <div className="reveal-fade relative flex items-center justify-center overflow-hidden">
+          {/* Blue radial glow */}
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+            style={{ background: "radial-gradient(ellipse, rgba(59,130,246,0.1), transparent)" }}
+            aria-hidden="true"
+          />
           <canvas
             ref={canvasRef}
-            className="h-[300px] w-full md:h-[400px]"
+            className="h-[280px] w-full md:h-[320px]"
             aria-hidden="true"
           />
         </div>

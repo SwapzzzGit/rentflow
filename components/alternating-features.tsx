@@ -2,24 +2,23 @@
 
 import { Building2, Users, BarChart3, Check, CreditCard, Camera, FileText } from "lucide-react"
 
-// Section 08 - Multi-Property
 function MultiPropertyFeature() {
   return (
-    <div className="reveal mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+    <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-12 md:grid-cols-2 md:py-16">
       {/* Left - Text */}
-      <div>
+      <div className="reveal-blur">
         <span className="mb-4 inline-block text-xs uppercase tracking-widest text-[#E8392A]">
           Multi-Property
         </span>
         <h2
-          className="font-serif font-extrabold tracking-[-0.03em] text-[#ffffff]"
-          style={{ fontSize: "clamp(32px, 4vw, 54px)" }}
+          className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
+          style={{ fontSize: "clamp(32px, 4vw, 54px)", lineHeight: "1.1" }}
         >
           Manage 10 properties
           <br />
           as easily as 1.
         </h2>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-[#666666]">
+        <p className="mt-4 max-w-md text-base leading-[1.65] text-[#666666]">
           Switch between properties in one tap. Every tenant, lease, payment, and issue organized by property. Your portfolio at a glance.
         </p>
         <ul className="mt-6 flex flex-col gap-2.5">
@@ -30,7 +29,7 @@ function MultiPropertyFeature() {
             "Bulk rent tracking",
           ].map((f) => (
             <li key={f} className="flex items-center gap-2 text-sm text-[#999999]">
-              <Check className="h-4 w-4 text-[#22C55E]" />
+              <Check className="h-4 w-4 text-[#E8392A]" />
               {f}
             </li>
           ))}
@@ -41,7 +40,7 @@ function MultiPropertyFeature() {
       </div>
 
       {/* Right - Property Switcher Card */}
-      <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-2xl">
+      <div className="reveal-blur stagger-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-2xl">
         <div className="mb-4 text-xs font-medium uppercase tracking-wider text-[#666666]">Properties</div>
         <div className="flex flex-col gap-2">
           {[
@@ -74,17 +73,15 @@ function MultiPropertyFeature() {
   )
 }
 
-// Section 09 - Tenant Portal
 function TenantPortalFeature() {
   return (
-    <div className="reveal mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+    <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-12 md:grid-cols-2 md:py-16">
       {/* Left - Tenant View Card (blue accent) */}
-      <div className="order-2 rounded-2xl border border-[#3B82F6]/20 bg-[rgba(59,130,246,0.05)] p-5 shadow-2xl shadow-[rgba(30,64,175,0.2)] md:order-1">
+      <div className="reveal-blur stagger-2 order-2 rounded-2xl border border-[#3B82F6]/20 bg-[rgba(59,130,246,0.05)] p-5 shadow-2xl shadow-[rgba(30,64,175,0.2)] md:order-1">
         <div className="mb-4 flex items-center gap-2">
           <Users className="h-4 w-4 text-[#3B82F6]" />
           <span className="text-xs font-medium uppercase tracking-wider text-[#3B82F6]">Tenant Portal</span>
         </div>
-        {/* Rent payment card */}
         <div className="mb-4 rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.03)] p-4">
           <div className="text-xs text-[#666666]">Rent Due - Feb 1</div>
           <div className="mt-1 text-2xl font-bold text-[#ffffff]">$1,450.00</div>
@@ -92,7 +89,6 @@ function TenantPortalFeature() {
             Pay Rent Now
           </button>
         </div>
-        {/* Quick actions */}
         <div className="grid grid-cols-2 gap-2">
           <div className="flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] p-3">
             <Camera className="h-4 w-4 text-[#666666]" />
@@ -103,7 +99,6 @@ function TenantPortalFeature() {
             <span className="text-xs text-[#999999]">View Lease</span>
           </div>
         </div>
-        {/* Message thread preview */}
         <div className="mt-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] p-3">
           <div className="text-xs font-medium text-[#999999]">Messages</div>
           <div className="mt-2 rounded-lg bg-[rgba(59,130,246,0.1)] p-2 text-xs text-[#3B82F6]">
@@ -113,19 +108,19 @@ function TenantPortalFeature() {
       </div>
 
       {/* Right - Text */}
-      <div className="order-1 md:order-2">
+      <div className="reveal-blur order-1 md:order-2">
         <span className="mb-4 inline-block text-xs uppercase tracking-widest text-[#3B82F6]">
           Tenant Portal
         </span>
         <h2
-          className="font-serif font-extrabold tracking-[-0.03em] text-[#ffffff]"
-          style={{ fontSize: "clamp(32px, 4vw, 54px)" }}
+          className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
+          style={{ fontSize: "clamp(32px, 4vw, 54px)", lineHeight: "1.1" }}
         >
           Your tenants get
           <br />
           their own app too.
         </h2>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-[#666666]">
+        <p className="mt-4 max-w-md text-base leading-[1.65] text-[#666666]">
           Tenants log in to pay rent, submit maintenance requests, view their lease, and message you — all without using WhatsApp.
         </p>
         <ul className="mt-6 flex flex-col gap-2.5">
@@ -136,7 +131,7 @@ function TenantPortalFeature() {
             "Lease document access",
           ].map((f) => (
             <li key={f} className="flex items-center gap-2 text-sm text-[#999999]">
-              <Check className="h-4 w-4 text-[#22C55E]" />
+              <Check className="h-4 w-4 text-[#E8392A]" />
               {f}
             </li>
           ))}
@@ -146,24 +141,23 @@ function TenantPortalFeature() {
   )
 }
 
-// Section 10 - Tax Ready
 function TaxReadyFeature() {
   return (
-    <div className="reveal mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+    <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-12 md:grid-cols-2 md:py-16">
       {/* Left - Text */}
-      <div>
+      <div className="reveal-blur">
         <span className="mb-4 inline-block text-xs uppercase tracking-widest text-[#E8392A]">
           Tax Ready
         </span>
         <h2
-          className="font-serif font-extrabold tracking-[-0.03em] text-[#ffffff]"
-          style={{ fontSize: "clamp(32px, 4vw, 54px)" }}
+          className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
+          style={{ fontSize: "clamp(32px, 4vw, 54px)", lineHeight: "1.1" }}
         >
           End the spreadsheet
           <br />
           nightmare for good.
         </h2>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-[#666666]">
+        <p className="mt-4 max-w-md text-base leading-[1.65] text-[#666666]">
           Every expense logged with receipt photo. Every rent payment recorded. At tax time: one click, one export, done. Your accountant gets a clean PDF.
         </p>
         <ul className="mt-6 flex flex-col gap-2.5">
@@ -174,7 +168,7 @@ function TaxReadyFeature() {
             "Expense breakdown by property",
           ].map((f) => (
             <li key={f} className="flex items-center gap-2 text-sm text-[#999999]">
-              <Check className="h-4 w-4 text-[#22C55E]" />
+              <Check className="h-4 w-4 text-[#E8392A]" />
               {f}
             </li>
           ))}
@@ -182,7 +176,7 @@ function TaxReadyFeature() {
       </div>
 
       {/* Right - Expense tracker card */}
-      <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-2xl">
+      <div className="reveal-blur stagger-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-2xl">
         <div className="mb-4 text-xs font-medium uppercase tracking-wider text-[#666666]">Expense Summary</div>
         <div className="flex flex-col gap-3">
           {[
@@ -218,7 +212,9 @@ export function AlternatingFeatures() {
   return (
     <>
       <MultiPropertyFeature />
+      <div className="section-divider mx-auto max-w-4xl" />
       <TenantPortalFeature />
+      <div className="section-divider mx-auto max-w-4xl" />
       <TaxReadyFeature />
     </>
   )

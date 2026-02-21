@@ -14,6 +14,10 @@ import { FinalCTA } from "@/components/final-cta"
 import { Footer } from "@/components/footer"
 import { ScrollRevealInit } from "@/components/scroll-reveal"
 
+function SectionDivider() {
+  return <div className="section-divider mx-auto max-w-5xl" />
+}
+
 export default function Home() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#080808]">
@@ -23,12 +27,19 @@ export default function Home() {
       <Hero />
       <ProductMockup />
       <TrustBar />
+      <SectionDivider />
       <FeaturesBento />
+      <SectionDivider />
       <AutomationSection />
+      <SectionDivider />
       <AlternatingFeatures />
+      <SectionDivider />
       <BuildSection />
+      <SectionDivider />
       <GlobalReach />
+      <SectionDivider />
       <Pricing />
+      <SectionDivider />
       <Testimonials />
       <FinalCTA />
       <Footer />
