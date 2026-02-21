@@ -73,7 +73,7 @@ export function Footer() {
 
       {/* Bottom Bar */}
       <div className="mx-auto mt-8 flex max-w-6xl flex-wrap items-center justify-between gap-4 border-t border-[rgba(255,255,255,0.05)] pt-6 text-xs text-[#444444]">
-        <span>Rentflow managed by Orange rock llc</span>
+        <span>{"\u00A9"} 2026 RentFlow | Managed by Orange Rock LLC | All rights reserved.</span>
         <span>{"\uD83C\uDDFA\uD83C\uDDF8"} United States {"\u00B7"} {"\uD83C\uDDEC\uD83C\uDDE7"} United Kingdom {"\u00B7"} {"\uD83C\uDDE6\uD83C\uDDFA"} Australia</span>
       </div>
     </footer>
