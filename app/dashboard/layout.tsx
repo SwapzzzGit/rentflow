@@ -1,0 +1,292 @@
+'use client'
+
+import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
+import {
+    LayoutDashboard,
+    Building2,
+    Users,
+    DollarSign,
+    Wrench,
+    BarChart3,
+    FileText,
+    Settings,
+    LogOut,
+    PanelLeftClose,
+    PanelLeftOpen,
+    Sun,
+    Moon,
+} from 'lucide-react'
+
+const navItems = [
+    { label: 'Dashboard', icon: LayoutDashboard, route: '/dashboard' },
+    { label: 'Properties', icon: Building2, route: '/dashboard/properties' },
+    { label: 'Tenants', icon: Users, route: '/dashboard/tenants' },
+    { label: 'Rent', icon: DollarSign, route: '/dashboard/rent' },
+    { label: 'Maintenance', icon: Wrench, route: '/dashboard/maintenance' },
+    { label: 'Expenses', icon: BarChart3, route: '/dashboard/expenses' },
+    { label: 'Leases', icon: FileText, route: '/dashboard/leases' },
+    { label: 'Settings', icon: Settings, route: '/dashboard/settings' },
+]
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname()
+    const router = useRouter()
+    const supabase = createClient()
+
+    const [open, setOpen] = useState(true)
+    const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+    const [userEmail, setUserEmail] = useState('')
+    const [userInitial, setUserInitial] = useState('U')
+    const [signingOut, setSigningOut] = useState(false)
+
+    useEffect(() => {
+        const savedSidebar = localStorage.getItem('sidebar')
+        if (savedSidebar !== null) setOpen(savedSidebar === 'true')
+
+        const savedTheme = (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
+        setTheme(savedTheme)
+        applyTheme(savedTheme)
+
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user?.email) {
+                setUserEmail(user.email)
+                setUserInitial(
+                    (user.user_metadata?.full_name || user.email)?.[0]?.toUpperCase() ?? 'U'
+                )
+            }
+        })
+    }, [])
+
+    function applyTheme(t: 'dark' | 'light') {
+        if (t === 'light') document.documentElement.classList.add('light')
+        else document.documentElement.classList.remove('light')
+    }
+
+    function toggleSidebar() {
+        const next = !open
+        setOpen(next)
+        localStorage.setItem('sidebar', String(next))
+    }
+
+    function toggleTheme() {
+        const next = theme === 'dark' ? 'light' : 'dark'
+        setTheme(next)
+        localStorage.setItem('theme', next)
+        applyTheme(next)
+    }
+
+    async function handleLogout() {
+        setSigningOut(true)
+        await supabase.auth.signOut()
+        router.push('/login')
+        router.refresh()
+    }
+
+    const isActive = (route: string) =>
+        route === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(route)
+
+    /* Label: fades + collapses width when sidebar closed */
+    const labelStyle = {
+        maxWidth: open ? '160px' : '0px',
+        opacity: open ? 1 : 0,
+        overflow: 'hidden' as const,
+        whiteSpace: 'nowrap' as const,
+        transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease',
+    }
+
+    /* Tooltip shown on icon hover when collapsed */
+    const Tooltip = ({ label }: { label: string }) =>
+        !open ? (
+            <div
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                style={{ background: '#1a1a1a', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }}
+            >
+                {label}
+            </div>
+        ) : null
+
+    return (
+        /*
+         * CRITICAL layout:
+         * - Outer: flex h-screen overflow-hidden → full viewport flex row
+         * - Aside:  flex-shrink-0 + overflow-hidden + width class → clips all bleeds
+         * - Main:   flex-1 min-w-0 → takes ALL remaining space, zero fixed margins
+         */
+        <div className="flex h-screen overflow-hidden" style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}>
+
+            {/* ─────────────── SIDEBAR ─────────────── */}
+            <aside
+                className={`flex flex-col flex-shrink-0 h-full overflow-hidden ${open ? 'w-[240px]' : 'w-[68px]'}`}
+                style={{
+                    transition: 'width 250ms cubic-bezier(0.16,1,0.3,1)',
+                    background: 'var(--dash-sidebar-bg)',
+                    borderRight: '1px solid var(--dash-border)',
+                }}
+            >
+
+                {/* Header row: logo collapses away, toggle always visible */}
+                <div
+                    className="flex items-center px-3 py-4 flex-shrink-0"
+                    style={{
+                        borderBottom: '1px solid var(--dash-border)',
+                        justifyContent: open ? 'space-between' : 'center',
+                    }}
+                >
+                    {/* Logo — the ENTIRE logo collapses to width:0 when closed */}
+                    <div
+                        className="flex items-center gap-2 overflow-hidden flex-shrink-0"
+                        style={{
+                            maxWidth: open ? '160px' : '0px',
+                            opacity: open ? 1 : 0,
+                            transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease',
+                        }}
+                    >
+                        <div className="w-8 h-8 bg-[#E8392A] rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                                <path d="M3 14V7.5L9 3L15 7.5V14C15 14.55 14.55 15 14 15H10.5V11H7.5V15H4C3.45 15 3 14.55 3 14Z" fill="white" />
+                            </svg>
+                        </div>
+                        <span
+                            className="text-base font-bold tracking-tight whitespace-nowrap"
+                            style={{ fontFamily: 'var(--font-bricolage)', color: 'var(--dash-text)' }}
+                        >
+                            RentFlow
+                        </span>
+                    </div>
+
+                    {/* Toggle button — always visible, centers itself when logo is gone */}
+                    <button
+                        onClick={toggleSidebar}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+                        style={{ color: 'var(--dash-muted)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
+                        suppressHydrationWarning
+                    >
+                        {open ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+                    </button>
+                </div>
+
+                {/* Nav items */}
+                <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
+                    {navItems.map(({ label, icon: Icon, route }) => {
+                        const active = isActive(route)
+                        return (
+                            <div key={route} className="relative group">
+                                <Link
+                                    href={route}
+                                    className="flex items-center rounded-xl text-sm font-medium transition-all"
+                                    style={{
+                                        gap: open ? '12px' : '0',
+                                        justifyContent: open ? 'flex-start' : 'center',
+                                        padding: open ? '10px 12px' : '10px 0',
+                                        color: active ? 'var(--dash-text)' : 'var(--dash-nav-inactive)',
+                                        background: active ? 'var(--dash-nav-active-bg)' : 'transparent',
+                                        borderLeft: active ? '2px solid #E8392A' : '2px solid transparent',
+                                    }}
+                                    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' } }}
+                                    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = 'var(--dash-nav-inactive)'; e.currentTarget.style.background = 'transparent' } }}
+                                >
+                                    <Icon className="w-4 h-4 flex-shrink-0" />
+                                    <span style={labelStyle}>{label}</span>
+                                </Link>
+                                <Tooltip label={label} />
+                            </div>
+                        )
+                    })}
+                </nav>
+
+                {/* Bottom section */}
+                <div className="flex-shrink-0 px-2 pb-4 pt-2" style={{ borderTop: '1px solid var(--dash-border)' }}>
+
+                    {/* Theme toggle */}
+                    <div className="relative group">
+                        <div
+                            onClick={toggleTheme}
+                            className="flex items-center rounded-xl text-sm cursor-pointer transition-all"
+                            style={{
+                                justifyContent: open ? 'space-between' : 'center',
+                                padding: open ? '10px 12px' : '10px 0',
+                                color: 'var(--dash-muted)',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
+                        >
+                            <div className="flex items-center gap-3">
+                                {theme === 'dark' ? <Moon className="w-4 h-4 flex-shrink-0" /> : <Sun className="w-4 h-4 flex-shrink-0" />}
+                                <span style={labelStyle}>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+                            </div>
+                            {open && (
+                                <div
+                                    className="w-10 h-5 rounded-full relative flex-shrink-0 transition-colors duration-200"
+                                    style={{ background: theme === 'light' ? '#E8392A' : 'var(--dash-toggle-track)' }}
+                                >
+                                    <div
+                                        className="w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200"
+                                        style={{ transform: theme === 'light' ? 'translateX(22px)' : 'translateX(2px)' }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <Tooltip label={theme === 'dark' ? 'Switch to light' : 'Switch to dark'} />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="my-2" style={{ height: '1px', background: 'var(--dash-divider)' }} />
+
+                    {/* User info */}
+                    <div
+                        className="flex items-center rounded-xl px-2 py-2 mb-0.5 overflow-hidden"
+                        style={{ gap: open ? '10px' : '0', justifyContent: open ? 'flex-start' : 'center' }}
+                    >
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white" style={{ background: '#E8392A' }}>
+                            {userInitial}
+                        </div>
+                        <div className="overflow-hidden min-w-0">
+                            <p className="text-xs font-medium truncate" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-text)' }}>
+                                {userEmail || 'Loading...'}
+                            </p>
+                            <p className="text-[10px] mt-0.5" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-muted)' }}>
+                                Free plan
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="relative group">
+                        <button
+                            onClick={handleLogout}
+                            disabled={signingOut}
+                            className="w-full flex items-center rounded-xl text-sm transition-all"
+                            style={{
+                                gap: open ? '10px' : '0',
+                                justifyContent: open ? 'flex-start' : 'center',
+                                padding: open ? '9px 12px' : '9px 0',
+                                color: 'var(--dash-muted)',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#E8392A'; e.currentTarget.style.background = 'rgba(232,57,42,0.08)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
+                            suppressHydrationWarning
+                        >
+                            <LogOut className="w-4 h-4 flex-shrink-0" />
+                            <span style={labelStyle}>{signingOut ? 'Signing out...' : 'Log out'}</span>
+                        </button>
+                        <Tooltip label="Log out" />
+                    </div>
+                </div>
+            </aside>
+
+            {/* ─────────────── MAIN CONTENT ─────────────── */}
+            {/* flex-1 + min-w-0: takes ALL remaining space. Never needs fixed margins. */}
+            <main
+                className="flex-1 min-w-0 overflow-y-auto"
+                style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}
+            >
+                {children}
+            </main>
+        </div>
+    )
+}

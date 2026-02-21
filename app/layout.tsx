@@ -34,6 +34,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dmSans.variable} ${bricolage.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Anti-flash: apply theme class before React hydrates */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased bg-[#080808] text-[#ffffff] overflow-x-hidden" suppressHydrationWarning>
         {children}
         <Analytics />
