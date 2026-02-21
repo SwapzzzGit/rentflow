@@ -83,21 +83,18 @@ export function Pricing() {
 
         {/* Toggle */}
         <div className="reveal-blur mb-10 flex items-center justify-center gap-3">
-          <span className={`text-sm ${!annual ? "text-[#ffffff]" : "text-[#666666]"}`}>Monthly</span>
+          <span className={`text-sm transition-colors ${!annual ? "text-[#ffffff]" : "text-[#666666]"}`}>Monthly</span>
           <button
             onClick={() => setAnnual(!annual)}
-            className={`relative h-7 w-12 rounded-full transition-colors ${
-              annual ? "bg-[#E8392A]" : "bg-[rgba(255,255,255,0.15)]"
-            }`}
+            className="relative h-7 w-12 rounded-full bg-[rgba(255,255,255,0.15)] transition-colors"
             aria-label="Toggle annual pricing"
           >
             <span
-              className={`absolute top-0.5 h-6 w-6 rounded-full bg-[#ffffff] transition-transform ${
-                annual ? "translate-x-5.5" : "translate-x-0.5"
-              }`}
+              className="absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-[#ffffff] transition-transform duration-200"
+              style={{ transform: annual ? "translateX(20px)" : "translateX(0px)" }}
             />
           </button>
-          <span className={`text-sm ${annual ? "text-[#ffffff]" : "text-[#666666]"}`}>
+          <span className={`text-sm transition-colors ${annual ? "text-[#ffffff]" : "text-[#666666]"}`}>
             Annual <span className="text-xs text-[#E8392A]">(Save 20%)</span>
           </span>
         </div>
