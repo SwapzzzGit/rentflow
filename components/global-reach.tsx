@@ -2,10 +2,14 @@
 
 import { useEffect, useRef } from "react"
 
-const countries = [
-  { flag: "\uD83C\uDDFA\uD83C\uDDF8", name: "United States", currency: "USD" },
-  { flag: "\uD83C\uDDEC\uD83C\uDDE7", name: "United Kingdom", currency: "GBP" },
-  { flag: "\uD83C\uDDE6\uD83C\uDDFA", name: "Australia", currency: "AUD" },
+const currencies = [
+  { flag: "\uD83C\uDDFA\uD83C\uDDF8", label: "USD" },
+  { flag: "\uD83C\uDDEC\uD83C\uDDE7", label: "GBP" },
+  { flag: "\uD83C\uDDE6\uD83C\uDDFA", label: "AUD" },
+  { flag: "\uD83C\uDDE8\uD83C\uDDE6", label: "CAD" },
+  { flag: "\uD83C\uDDEA\uD83C\uDDFA", label: "EUR" },
+  { flag: "\uD83C\uDDEE\uD83C\uDDF3", label: "INR" },
+  { flag: "\uD83C\uDDE6\uD83C\uDDEA", label: "AED" },
 ]
 
 export function GlobalReach() {
@@ -107,12 +111,12 @@ export function GlobalReach() {
           className="font-serif font-extrabold tracking-[-0.025em] text-[#ffffff]"
           style={{ fontSize: "clamp(32px, 4vw, 54px)", lineHeight: "1.1" }}
         >
-          One app. Three countries.
+          One app. Every country.
           <br />
           Zero complexity.
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-base leading-[1.65] text-[#666666]">
-          Auto-detects your currency and date format. Switch between USD, GBP, and AUD in settings.
+          Auto-detects your currency and date format. Supports 20+ currencies including USD, GBP, AUD, CAD, EUR, INR, AED, SGD and more. Works wherever you own property.
         </p>
       </div>
 
@@ -130,15 +134,18 @@ export function GlobalReach() {
         />
       </div>
 
-      <div className="reveal-blur flex flex-wrap items-center justify-center gap-4">
-        {countries.map((c) => (
+      <div className="reveal-blur flex flex-wrap items-center justify-center gap-3">
+        {currencies.map((c) => (
           <span
-            key={c.currency}
+            key={c.label}
             className="rounded-full border border-[rgba(255,255,255,0.1)] px-4 py-2 text-sm text-[#999999]"
           >
-            {c.flag} {c.name} ({c.currency})
+            {c.flag} {c.label}
           </span>
         ))}
+        <span className="rounded-full border border-[rgba(255,255,255,0.07)] px-4 py-2 text-sm text-[#555555]">
+          + 14 more
+        </span>
       </div>
     </section>
   )

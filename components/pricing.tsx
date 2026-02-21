@@ -45,7 +45,7 @@ const plans = [
     features: [
       "Unlimited properties",
       "Everything in Starter",
-      "Multi-currency (USD / GBP / AUD)",
+      "Multi-currency (20+ currencies worldwide)",
       "Advanced analytics dashboard",
       "Bank-level export (CSV + PDF)",
       "Lease document storage",
@@ -77,7 +77,7 @@ export function Pricing() {
             No surprises.
           </h2>
           <p className="mt-4 text-base leading-[1.65] text-[#666666]">
-            Try free for 14 days. No credit card required.
+            Try free for 14 days. Available worldwide. No credit card required.
           </p>
         </div>
 

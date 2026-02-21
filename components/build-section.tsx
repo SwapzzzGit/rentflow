@@ -89,7 +89,7 @@ export function BuildSection() {
             business.
           </h2>
           <p className="mt-6 max-w-md text-base leading-[1.65] text-[#666666]">
-            Whether you have 1 property or 20, RentFlow scales with you. Multi-currency for US, UK, and Australia. Works on any device. No training needed.
+            Whether you have 1 property or 20, RentFlow scales with you. Multi-currency support for 20+ countries. Works on any device, anywhere in the world. No training needed.
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <a href="#pricing" className="text-sm text-[#3B82F6] transition-colors hover:underline">

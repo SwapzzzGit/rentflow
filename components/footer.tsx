@@ -7,7 +7,7 @@ const columns = [
   },
   {
     heading: "For Landlords",
-    links: ["1-5 Units", "6-20 Units", "US Landlords", "UK Landlords", "AU Landlords"],
+    links: ["1-5 Units", "6-20 Units", "US & Canada", "UK & Ireland", "AU & New Zealand", "Asia & Middle East"],
   },
   {
     heading: "Resources",

@@ -16,7 +16,9 @@ function MultiPropertyFeature() {
         >
           Manage 10 properties
           <br />
-          as easily as 1.
+          as easily as 1. Anywhere
+          <br />
+          in the world.
         </h2>
         <p className="mt-4 max-w-md text-base leading-[1.65] text-[#666666]">
           Switch between properties in one tap. Every tenant, lease, payment, and issue organized by property. Your portfolio at a glance.

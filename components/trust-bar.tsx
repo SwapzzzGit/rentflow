@@ -10,7 +10,7 @@ export function TrustBar() {
   return (
     <section className="reveal-blur border-y border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.01)] py-12">
       <p className="mb-6 text-center text-xs uppercase tracking-widest text-[#444444]">
-        Landlords using RentFlow manage properties on
+        Used by independent landlords worldwide
       </p>
       <div className="flex flex-wrap items-center justify-center gap-8 px-6 md:gap-12">
         {logos.map((logo) => (

@@ -20,7 +20,7 @@ export function FinalCTA() {
           Start managing properties.
         </h2>
         <p className="reveal-blur stagger-2 mt-4 text-base leading-[1.65] text-[#666666]">
-          Join 2,400+ landlords who replaced their spreadsheets with RentFlow.
+          Join 2,400+ landlords in 30+ countries who replaced their spreadsheets with RentFlow.
         </p>
         <div className="reveal-blur stagger-3 mt-8">
           <a

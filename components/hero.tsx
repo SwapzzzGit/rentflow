@@ -9,7 +9,7 @@ export function Hero() {
         style={{ animationDelay: "0ms" }}
       >
         <span className="animate-pulse-dot inline-block h-2 w-2 rounded-full bg-[#22C55E]" />
-        <span className="text-xs text-[#999999]">Now live in US / UK / Australia</span>
+        <span className="text-xs text-[#999999]">Trusted by landlords in 30+ countries</span>
       </div>
 
       {/* Headline */}
@@ -33,7 +33,7 @@ export function Hero() {
         style={{ animationDelay: "240ms" }}
       >
         One app replaces five tools. Rent tracking, expenses,
-        maintenance, and tenant communication — all for $9.99/month.
+        maintenance, and tenant communication — wherever you own property.
       </p>
 
       {/* CTA Row */}
@@ -77,7 +77,7 @@ export function Hero() {
             </div>
           ))}
         </div>
-        <span className="text-sm text-[#666666]">Trusted by 2,400+ landlords</span>
+        <span className="text-sm text-[#666666]">Trusted by 2,400+ landlords across 30+ countries</span>
       </div>
     </section>
   )
