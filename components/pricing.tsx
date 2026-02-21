@@ -86,7 +86,7 @@ export function Pricing() {
           <span className={`text-sm transition-colors ${!annual ? "text-[#ffffff]" : "text-[#666666]"}`}>Monthly</span>
           <button
             onClick={() => setAnnual(!annual)}
-            className="relative h-7 w-12 rounded-full bg-[rgba(255,255,255,0.15)] transition-colors"
+            className={`relative h-7 w-12 rounded-full transition-colors ${annual ? "bg-[#E8392A]" : "bg-[rgba(255,255,255,0.15)]"}`}
             aria-label="Toggle annual pricing"
           >
             <span

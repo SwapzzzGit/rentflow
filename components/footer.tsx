@@ -21,7 +21,7 @@ const columns = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-[rgba(255,255,255,0.06)] bg-[#080808] px-6 py-16">
+    <footer className="border-t border-[rgba(255,255,255,0.06)] bg-[#080808] px-6 py-10">
       <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-5">
         {/* Brand */}
         <div className="md:col-span-1">
@@ -72,8 +72,8 @@ export function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="mx-auto mt-12 flex max-w-6xl flex-wrap items-center justify-between gap-4 border-t border-[rgba(255,255,255,0.05)] pt-8 text-xs text-[#444444]">
-        <span>{"\u00A9"} 2025 RentFlow Technologies Ltd. All rights reserved.</span>
+      <div className="mx-auto mt-8 flex max-w-6xl flex-wrap items-center justify-between gap-4 border-t border-[rgba(255,255,255,0.05)] pt-6 text-xs text-[#444444]">
+        <span>Rentflow managed by Orange rock llc</span>
         <span>{"\uD83C\uDDFA\uD83C\uDDF8"} United States {"\u00B7"} {"\uD83C\uDDEC\uD83C\uDDE7"} United Kingdom {"\u00B7"} {"\uD83C\uDDE6\uD83C\uDDFA"} Australia</span>
       </div>
     </footer>
