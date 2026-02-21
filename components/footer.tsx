@@ -22,9 +22,9 @@ const columns = [
 export function Footer() {
   return (
     <footer className="border-t border-[rgba(255,255,255,0.06)] bg-[#080808] px-6 py-10">
-      <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-5">
+      <div className="mx-auto grid max-w-6xl gap-8 grid-cols-2 md:grid-cols-5">
         {/* Brand */}
-        <div className="md:col-span-1">
+        <div className="col-span-2 md:col-span-1">
           <a href="#" className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E8392A]">
               <Home className="h-4 w-4 text-[#ffffff]" />

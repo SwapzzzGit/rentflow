@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
+import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import {
     LayoutDashboard,
     Building2,
@@ -115,178 +116,182 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
          * - Aside:  flex-shrink-0 + overflow-hidden + width class → clips all bleeds
          * - Main:   flex-1 min-w-0 → takes ALL remaining space, zero fixed margins
          */
-        <div className="flex h-screen overflow-hidden" style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}>
+        <>
+            <div className="flex h-screen overflow-hidden" style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}>
 
-            {/* ─────────────── SIDEBAR ─────────────── */}
-            <aside
-                className={`flex flex-col flex-shrink-0 h-full overflow-hidden ${open ? 'w-[240px]' : 'w-[68px]'}`}
-                style={{
-                    transition: 'width 250ms cubic-bezier(0.16,1,0.3,1)',
-                    background: 'var(--dash-sidebar-bg)',
-                    borderRight: '1px solid var(--dash-border)',
-                }}
-            >
-
-                {/* Header row: logo collapses away, toggle always visible */}
-                <div
-                    className="flex items-center px-3 py-4 flex-shrink-0"
+                {/* ─────────────── SIDEBAR — hidden on mobile ─────────────── */}
+                <aside
+                    className={`hidden md:flex flex-col flex-shrink-0 h-full overflow-hidden ${open ? 'w-[240px]' : 'w-[68px]'}`}
                     style={{
-                        borderBottom: '1px solid var(--dash-border)',
-                        justifyContent: open ? 'space-between' : 'center',
+                        transition: 'width 250ms cubic-bezier(0.16,1,0.3,1)',
+                        background: 'var(--dash-sidebar-bg)',
+                        borderRight: '1px solid var(--dash-border)',
                     }}
                 >
-                    {/* Logo — the ENTIRE logo collapses to width:0 when closed */}
+
+                    {/* Header row: logo collapses away, toggle always visible */}
                     <div
-                        className="flex items-center gap-2 overflow-hidden flex-shrink-0"
+                        className="flex items-center px-3 py-4 flex-shrink-0"
                         style={{
-                            maxWidth: open ? '160px' : '0px',
-                            opacity: open ? 1 : 0,
-                            transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease',
+                            borderBottom: '1px solid var(--dash-border)',
+                            justifyContent: open ? 'space-between' : 'center',
                         }}
                     >
-                        <div className="w-8 h-8 bg-[#E8392A] rounded-lg flex items-center justify-center flex-shrink-0">
-                            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                                <path d="M3 14V7.5L9 3L15 7.5V14C15 14.55 14.55 15 14 15H10.5V11H7.5V15H4C3.45 15 3 14.55 3 14Z" fill="white" />
-                            </svg>
-                        </div>
-                        <span
-                            className="text-base font-bold tracking-tight whitespace-nowrap"
-                            style={{ fontFamily: 'var(--font-bricolage)', color: 'var(--dash-text)' }}
-                        >
-                            RentFlow
-                        </span>
-                    </div>
-
-                    {/* Toggle button — always visible, centers itself when logo is gone */}
-                    <button
-                        onClick={toggleSidebar}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
-                        style={{ color: 'var(--dash-muted)' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
-                        suppressHydrationWarning
-                    >
-                        {open ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-                    </button>
-                </div>
-
-                {/* Nav items */}
-                <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
-                    {navItems.map(({ label, icon: Icon, route }) => {
-                        const active = isActive(route)
-                        return (
-                            <div key={route} className="relative group">
-                                <Link
-                                    href={route}
-                                    className="flex items-center rounded-xl text-sm font-medium transition-all"
-                                    style={{
-                                        gap: open ? '12px' : '0',
-                                        justifyContent: open ? 'flex-start' : 'center',
-                                        padding: open ? '10px 12px' : '10px 0',
-                                        color: active ? 'var(--dash-text)' : 'var(--dash-nav-inactive)',
-                                        background: active ? 'var(--dash-nav-active-bg)' : 'transparent',
-                                        borderLeft: active ? '2px solid #E8392A' : '2px solid transparent',
-                                    }}
-                                    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' } }}
-                                    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = 'var(--dash-nav-inactive)'; e.currentTarget.style.background = 'transparent' } }}
-                                >
-                                    <Icon className="w-4 h-4 flex-shrink-0" />
-                                    <span style={labelStyle}>{label}</span>
-                                </Link>
-                                <Tooltip label={label} />
-                            </div>
-                        )
-                    })}
-                </nav>
-
-                {/* Bottom section */}
-                <div className="flex-shrink-0 px-2 pb-4 pt-2" style={{ borderTop: '1px solid var(--dash-border)' }}>
-
-                    {/* Theme toggle */}
-                    <div className="relative group">
+                        {/* Logo — the ENTIRE logo collapses to width:0 when closed */}
                         <div
-                            onClick={toggleTheme}
-                            className="flex items-center rounded-xl text-sm cursor-pointer transition-all"
+                            className="flex items-center gap-2 overflow-hidden flex-shrink-0"
                             style={{
-                                justifyContent: open ? 'space-between' : 'center',
-                                padding: open ? '10px 12px' : '10px 0',
-                                color: 'var(--dash-muted)',
+                                maxWidth: open ? '160px' : '0px',
+                                opacity: open ? 1 : 0,
+                                transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease',
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
                         >
-                            <div className="flex items-center gap-3">
-                                {theme === 'dark' ? <Moon className="w-4 h-4 flex-shrink-0" /> : <Sun className="w-4 h-4 flex-shrink-0" />}
-                                <span style={labelStyle}>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+                            <div className="w-8 h-8 bg-[#E8392A] rounded-lg flex items-center justify-center flex-shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                                    <path d="M3 14V7.5L9 3L15 7.5V14C15 14.55 14.55 15 14 15H10.5V11H7.5V15H4C3.45 15 3 14.55 3 14Z" fill="white" />
+                                </svg>
                             </div>
-                            {open && (
-                                <div
-                                    className="w-10 h-5 rounded-full relative flex-shrink-0 transition-colors duration-200"
-                                    style={{ background: theme === 'light' ? '#E8392A' : 'var(--dash-toggle-track)' }}
-                                >
-                                    <div
-                                        className="w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200"
-                                        style={{ transform: theme === 'light' ? 'translateX(22px)' : 'translateX(2px)' }}
-                                    />
-                                </div>
-                            )}
+                            <span
+                                className="text-base font-bold tracking-tight whitespace-nowrap"
+                                style={{ fontFamily: 'var(--font-bricolage)', color: 'var(--dash-text)' }}
+                            >
+                                RentFlow
+                            </span>
                         </div>
-                        <Tooltip label={theme === 'dark' ? 'Switch to light' : 'Switch to dark'} />
-                    </div>
 
-                    {/* Divider */}
-                    <div className="my-2" style={{ height: '1px', background: 'var(--dash-divider)' }} />
-
-                    {/* User info */}
-                    <div
-                        className="flex items-center rounded-xl px-2 py-2 mb-0.5 overflow-hidden"
-                        style={{ gap: open ? '10px' : '0', justifyContent: open ? 'flex-start' : 'center' }}
-                    >
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white" style={{ background: '#E8392A' }}>
-                            {userInitial}
-                        </div>
-                        <div className="overflow-hidden min-w-0">
-                            <p className="text-xs font-medium truncate" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-text)' }}>
-                                {userEmail || 'Loading...'}
-                            </p>
-                            <p className="text-[10px] mt-0.5" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-muted)' }}>
-                                Free plan
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Logout */}
-                    <div className="relative group">
+                        {/* Toggle button — always visible, centers itself when logo is gone */}
                         <button
-                            onClick={handleLogout}
-                            disabled={signingOut}
-                            className="w-full flex items-center rounded-xl text-sm transition-all"
-                            style={{
-                                gap: open ? '10px' : '0',
-                                justifyContent: open ? 'flex-start' : 'center',
-                                padding: open ? '9px 12px' : '9px 0',
-                                color: 'var(--dash-muted)',
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = '#E8392A'; e.currentTarget.style.background = 'rgba(232,57,42,0.08)' }}
+                            onClick={toggleSidebar}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+                            style={{ color: 'var(--dash-muted)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
                             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
                             suppressHydrationWarning
                         >
-                            <LogOut className="w-4 h-4 flex-shrink-0" />
-                            <span style={labelStyle}>{signingOut ? 'Signing out...' : 'Log out'}</span>
+                            {open ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
                         </button>
-                        <Tooltip label="Log out" />
                     </div>
-                </div>
-            </aside>
 
-            {/* ─────────────── MAIN CONTENT ─────────────── */}
-            {/* flex-1 + min-w-0: takes ALL remaining space. Never needs fixed margins. */}
-            <main
-                className="flex-1 min-w-0 overflow-y-auto"
-                style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}
-            >
-                {children}
-            </main>
-        </div>
+                    {/* Nav items */}
+                    <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
+                        {navItems.map(({ label, icon: Icon, route }) => {
+                            const active = isActive(route)
+                            return (
+                                <div key={route} className="relative group">
+                                    <Link
+                                        href={route}
+                                        className="flex items-center rounded-xl text-sm font-medium transition-all"
+                                        style={{
+                                            gap: open ? '12px' : '0',
+                                            justifyContent: open ? 'flex-start' : 'center',
+                                            padding: open ? '10px 12px' : '10px 0',
+                                            color: active ? 'var(--dash-text)' : 'var(--dash-nav-inactive)',
+                                            background: active ? 'var(--dash-nav-active-bg)' : 'transparent',
+                                            borderLeft: active ? '2px solid #E8392A' : '2px solid transparent',
+                                        }}
+                                        onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' } }}
+                                        onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = 'var(--dash-nav-inactive)'; e.currentTarget.style.background = 'transparent' } }}
+                                    >
+                                        <Icon className="w-4 h-4 flex-shrink-0" />
+                                        <span style={labelStyle}>{label}</span>
+                                    </Link>
+                                    <Tooltip label={label} />
+                                </div>
+                            )
+                        })}
+                    </nav>
+
+                    {/* Bottom section */}
+                    <div className="flex-shrink-0 px-2 pb-4 pt-2" style={{ borderTop: '1px solid var(--dash-border)' }}>
+
+                        {/* Theme toggle */}
+                        <div className="relative group">
+                            <div
+                                onClick={toggleTheme}
+                                className="flex items-center rounded-xl text-sm cursor-pointer transition-all"
+                                style={{
+                                    justifyContent: open ? 'space-between' : 'center',
+                                    padding: open ? '10px 12px' : '10px 0',
+                                    color: 'var(--dash-muted)',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
+                            >
+                                <div className="flex items-center gap-3">
+                                    {theme === 'dark' ? <Moon className="w-4 h-4 flex-shrink-0" /> : <Sun className="w-4 h-4 flex-shrink-0" />}
+                                    <span style={labelStyle}>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+                                </div>
+                                {open && (
+                                    <div
+                                        className="w-10 h-5 rounded-full relative flex-shrink-0 transition-colors duration-200"
+                                        style={{ background: theme === 'light' ? '#E8392A' : 'var(--dash-toggle-track)' }}
+                                    >
+                                        <div
+                                            className="w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200"
+                                            style={{ transform: theme === 'light' ? 'translateX(22px)' : 'translateX(2px)' }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <Tooltip label={theme === 'dark' ? 'Switch to light' : 'Switch to dark'} />
+                        </div>
+
+                        {/* Divider */}
+                        <div className="my-2" style={{ height: '1px', background: 'var(--dash-divider)' }} />
+
+                        {/* User info */}
+                        <div
+                            className="flex items-center rounded-xl px-2 py-2 mb-0.5 overflow-hidden"
+                            style={{ gap: open ? '10px' : '0', justifyContent: open ? 'flex-start' : 'center' }}
+                        >
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white" style={{ background: '#E8392A' }}>
+                                {userInitial}
+                            </div>
+                            <div className="overflow-hidden min-w-0">
+                                <p className="text-xs font-medium truncate" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-text)' }}>
+                                    {userEmail || 'Loading...'}
+                                </p>
+                                <p className="text-[10px] mt-0.5" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-muted)' }}>
+                                    Free plan
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Logout */}
+                        <div className="relative group">
+                            <button
+                                onClick={handleLogout}
+                                disabled={signingOut}
+                                className="w-full flex items-center rounded-xl text-sm transition-all"
+                                style={{
+                                    gap: open ? '10px' : '0',
+                                    justifyContent: open ? 'flex-start' : 'center',
+                                    padding: open ? '9px 12px' : '9px 0',
+                                    color: 'var(--dash-muted)',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = '#E8392A'; e.currentTarget.style.background = 'rgba(232,57,42,0.08)' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
+                                suppressHydrationWarning
+                            >
+                                <LogOut className="w-4 h-4 flex-shrink-0" />
+                                <span style={labelStyle}>{signingOut ? 'Signing out...' : 'Log out'}</span>
+                            </button>
+                            <Tooltip label="Log out" />
+                        </div>
+                    </div>
+                </aside>
+
+                {/* ─────────────── MAIN CONTENT ─────────────── */}
+                {/* flex-1 + min-w-0: takes ALL remaining space. Never needs fixed margins. */}
+                <main
+                    className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0"
+                    style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}
+                >
+                    {children}
+                </main>
+            </div>
+            {/* Mobile bottom nav — only visible on < md screens */}
+            <MobileBottomNav />
+        </>
     )
 }

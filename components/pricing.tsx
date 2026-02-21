@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Check } from "lucide-react"
 
 const plans = [
@@ -104,11 +105,10 @@ export function Pricing() {
           {plans.map((plan, idx) => (
             <div
               key={plan.name}
-              className={`reveal-blur ${idx === 0 ? "stagger-1" : idx === 1 ? "stagger-2" : "stagger-3"} relative flex flex-col overflow-hidden rounded-[20px] p-8 transition-all duration-200 ${
-                plan.highlighted
+              className={`reveal-blur ${idx === 0 ? "stagger-1" : idx === 1 ? "stagger-2" : "stagger-3"} relative flex flex-col overflow-hidden rounded-[20px] p-8 transition-all duration-200 ${plan.highlighted
                   ? "border border-[rgba(232,57,42,0.5)] bg-[rgba(255,255,255,0.06)] shadow-[0_0_0_1px_rgba(232,57,42,0.2),0_24px_80px_rgba(232,57,42,0.15)] hover:border-[rgba(232,57,42,0.7)]"
                   : "border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] hover:translate-y-[-4px] hover:border-[rgba(255,255,255,0.15)]"
-              }`}
+                }`}
             >
               {/* Top glow bar for highlighted */}
               {plan.highlighted && (
@@ -145,15 +145,15 @@ export function Pricing() {
                 ))}
               </ul>
               <div className="mt-auto">
-                <button
-                  className={`w-full rounded-full py-3 text-sm font-semibold transition-colors ${
-                    plan.highlighted
+                <Link
+                  href="/signup"
+                  className={`block w-full rounded-full py-3 text-center text-sm font-semibold transition-colors ${plan.highlighted
                       ? "bg-[#E8392A] text-[#ffffff] shadow-lg shadow-[rgba(232,57,42,0.3)] hover:bg-[#FF6B55]"
                       : "border border-[rgba(255,255,255,0.1)] text-[#ffffff] hover:bg-[rgba(255,255,255,0.05)]"
-                  }`}
+                    }`}
                 >
                   {plan.ctaText}
-                </button>
+                </Link>
               </div>
             </div>
           ))}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Home, Menu, X } from "lucide-react"
 
 const navLinks = ["Features", "Pricing", "For Tenants", "Changelog", "Blog"]
@@ -34,15 +35,15 @@ export function Navbar() {
 
         {/* Right */}
         <div className="flex items-center gap-4">
-          <a href="#" className="hidden text-sm text-[#999999] transition-colors hover:text-[#ffffff] md:block">
+          <Link href="/login" className="hidden text-sm text-[#999999] transition-colors hover:text-[#ffffff] md:block">
             Log in
-          </a>
-          <a
-            href="#"
+          </Link>
+          <Link
+            href="/signup"
             className="rounded-full bg-[#ffffff] px-5 py-2 text-sm font-semibold text-[#080808] transition-colors hover:bg-[#e5e5e5]"
           >
             Get Started
-          </a>
+          </Link>
           <button
             className="text-[#999999] md:hidden"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -66,13 +67,20 @@ export function Navbar() {
               {link}
             </a>
           ))}
-          <a
-            href="#"
+          <Link
+            href="/login"
             className="text-lg text-[#999999] transition-colors hover:text-[#ffffff]"
             onClick={() => setMobileOpen(false)}
           >
             Log in
-          </a>
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-full bg-[#E8392A] px-8 py-3 text-base font-semibold text-white transition-colors hover:bg-[#c73222]"
+            onClick={() => setMobileOpen(false)}
+          >
+            Get Started
+          </Link>
         </div>
       )}
     </nav>
