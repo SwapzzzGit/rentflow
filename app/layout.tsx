@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 const dmSans = DM_Sans({
@@ -45,6 +46,15 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-[#080808] text-[#ffffff] overflow-x-hidden" suppressHydrationWarning>
         {children}
         <Analytics />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: { background: '#1a1a1a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
+            success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
+            error: { iconTheme: { primary: '#E8392A', secondary: '#fff' } },
+          }}
+        />
+
       </body>
     </html>
   )
