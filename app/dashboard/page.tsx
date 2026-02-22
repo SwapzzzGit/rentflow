@@ -65,7 +65,7 @@ const maintenanceDotBg: Record<string, string> = {
 
 export default function DashboardPage() {
     return (
-        <div className="p-8 max-w-[1200px]" style={{ transition: 'background-color 200ms ease' }}>
+        <div className="p-8 w-full max-w-[1200px]" style={{ transition: 'background-color 200ms ease' }}>
 
             {/* Header */}
             <div className="mb-8">
