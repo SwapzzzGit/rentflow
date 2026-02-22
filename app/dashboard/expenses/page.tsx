@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { Plus, Receipt, Download, Filter } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Plus, Receipt, Download, Filter, X, Share2, ExternalLink, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SlidePanel } from '@/components/ui/slide-panel'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -17,6 +17,204 @@ type Property = { id: string; name: string }
 const CATEGORIES = ['Plumbing', 'Electrical', 'Painting', 'Cleaning', 'Insurance', 'General Repair', 'Utilities', 'Management Fee', 'Legal', 'Other']
 const defaultForm = { title: '', amount: '', category: 'General Repair', property_id: '', date: new Date().toISOString().split('T')[0], notes: '' }
 
+// ─── Receipt Viewer Modal ──────────────────────────────────────────────────────
+function ReceiptModal({
+    expense,
+    signedUrl,
+    loading,
+    error,
+    onClose,
+    onRetry,
+}: {
+    expense: Expense
+    signedUrl: string | null
+    loading: boolean
+    error: boolean
+    onClose: () => void
+    onRetry: () => void
+}) {
+    // Close on Escape key
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [onClose])
+
+    const isImage = signedUrl ? /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(signedUrl) : false
+    const isPDF = signedUrl ? /\.pdf(\?|$)/i.test(signedUrl) : false
+
+    async function handleDownload() {
+        if (!signedUrl) return
+        const a = document.createElement('a')
+        a.href = signedUrl
+        a.download = `receipt-${expense.id}`
+        a.click()
+    }
+
+    async function handleShare() {
+        if (!signedUrl) return
+        if (navigator.share) {
+            try { await navigator.share({ title: 'Receipt', url: signedUrl }) } catch { /* cancelled */ }
+        } else {
+            await navigator.clipboard.writeText(signedUrl)
+            toast.success('Link copied!')
+        }
+    }
+
+    const categoryColors: Record<string, string> = {
+        plumbing: '#3B82F6', electrical: '#F59E0B', painting: '#8B5CF6', cleaning: '#22C55E',
+        insurance: '#6366F1', utilities: '#14B8A6', 'general repair': '#E8392A', legal: '#EC4899',
+        other: '#64748B', 'management fee': '#0EA5E9',
+    }
+    const catColor = categoryColors[expense.category?.toLowerCase()] || '#64748B'
+    const formattedDate = new Date(expense.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+
+    return (
+        // Overlay — close on backdrop click
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+        >
+            {/* Modal card — glassmorphism */}
+            <div
+                className="relative w-full max-w-lg flex flex-col gap-4 rounded-3xl p-4 shadow-2xl"
+                style={{
+                    background: 'rgba(255,255,255,0.10)',
+                    backdropFilter: 'blur(24px)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    animation: 'modalIn 200ms cubic-bezier(0.16,1,0.3,1) both',
+                }}
+            >
+                {/* ── Header ── */}
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-white font-semibold text-base truncate">{expense.title}</p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <span
+                                className="text-xs font-medium rounded-full px-2.5 py-0.5 capitalize"
+                                style={{ background: catColor + '33', color: catColor }}
+                            >
+                                {expense.category}
+                            </span>
+                            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>{formattedDate}</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.15)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.28)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+                    >
+                        <X className="w-4 h-4 text-white" />
+                    </button>
+                </div>
+
+                {/* ── Image / PDF Viewer ── */}
+                <div
+                    className="w-full rounded-2xl overflow-hidden flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.25)', minHeight: '256px' }}
+                >
+                    {loading && (
+                        <div className="flex flex-col items-center gap-3 py-12">
+                            <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
+                            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Loading receipt…</p>
+                        </div>
+                    )}
+                    {error && !loading && (
+                        <div className="flex flex-col items-center gap-3 py-12">
+                            <p className="text-sm text-white/60">Could not load receipt.</p>
+                            <button
+                                onClick={onRetry}
+                                className="text-xs font-semibold px-4 py-2 rounded-xl transition-colors"
+                                style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
+                    {signedUrl && !loading && !error && isImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                            src={signedUrl}
+                            alt="Receipt"
+                            className="w-full h-auto rounded-2xl object-contain"
+                            style={{ maxHeight: '384px' }}
+                        />
+                    )}
+                    {signedUrl && !loading && !error && isPDF && (
+                        <iframe
+                            src={signedUrl}
+                            className="w-full rounded-2xl"
+                            style={{ height: '384px', border: 'none' }}
+                            title="Receipt PDF"
+                        />
+                    )}
+                    {signedUrl && !loading && !error && !isImage && !isPDF && (
+                        <div className="flex flex-col items-center gap-3 py-12">
+                            <Receipt className="w-10 h-10" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>Preview not available for this file type.</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Footer Actions ── */}
+                {signedUrl && !loading && !error && (
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleDownload}
+                            className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium text-white transition-colors"
+                            style={{ background: 'rgba(255,255,255,0.15)' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+                        >
+                            <Download className="w-4 h-4" />
+                            Download
+                        </button>
+                        <button
+                            onClick={handleShare}
+                            className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium text-white transition-colors"
+                            style={{ background: 'rgba(255,255,255,0.15)' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+                        >
+                            <Share2 className="w-4 h-4" />
+                            Share
+                        </button>
+                        <button
+                            onClick={() => window.open(signedUrl, '_blank')}
+                            className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium text-white transition-colors"
+                            style={{ background: 'rgba(255,255,255,0.15)' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                            Open
+                        </button>
+                    </div>
+                )}
+
+                {/* ── Expense Meta Strip ── */}
+                <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    ${Number(expense.amount).toLocaleString()}
+                    {(expense as any).property?.name ? ` · ${(expense as any).property.name}` : ''}
+                    {` · ${formattedDate}`}
+                </p>
+            </div>
+
+            {/* Modal entry animation */}
+            <style>{`
+                @keyframes modalIn {
+                    from { opacity: 0; transform: scale(0.94) translateY(8px); }
+                    to   { opacity: 1; transform: scale(1)    translateY(0);   }
+                }
+            `}</style>
+        </div>
+    )
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ExpensesPage() {
     const supabase = createClient()
     const [expenses, setExpenses] = useState<Expense[]>([])
@@ -27,6 +225,12 @@ export default function ExpensesPage() {
     const [panelOpen, setPanelOpen] = useState(false)
     const [form, setForm] = useState(defaultForm)
     const [saving, setSaving] = useState(false)
+
+    // Receipt modal state
+    const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
+    const [signedUrl, setSignedUrl] = useState<string | null>(null)
+    const [modalLoading, setModalLoading] = useState(false)
+    const [modalError, setModalError] = useState(false)
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -77,13 +281,34 @@ export default function ExpensesPage() {
         setSaving(false); setPanelOpen(false); setForm(defaultForm); fetchData()
     }
 
-    async function openReceipt(receiptPath: string) {
-        const { data, error } = await supabase.storage.from('receipts').createSignedUrl(receiptPath, 3600)
+    // Opens modal + fetches signed URL
+    async function openReceiptModal(expense: Expense) {
+        if (!expense.receipt_url) return
+        setSelectedExpense(expense)
+        setSignedUrl(null)
+        setModalError(false)
+        setModalLoading(true)
+        await fetchSignedUrl(expense.receipt_url)
+    }
+
+    async function fetchSignedUrl(path: string) {
+        setModalLoading(true)
+        setModalError(false)
+        const { data, error } = await supabase.storage.from('receipts').createSignedUrl(path, 3600)
         if (data?.signedUrl) {
-            window.open(data.signedUrl, '_blank')
+            setSignedUrl(data.signedUrl)
         } else {
+            setModalError(true)
             toast.error('Could not load receipt')
         }
+        setModalLoading(false)
+    }
+
+    function closeModal() {
+        setSelectedExpense(null)
+        setSignedUrl(null)
+        setModalError(false)
+        setModalLoading(false)
     }
 
     async function exportPDF() {
@@ -123,6 +348,18 @@ export default function ExpensesPage() {
 
     return (
         <div className="p-8 w-full">
+            {/* Receipt Viewer Modal */}
+            {selectedExpense && (
+                <ReceiptModal
+                    expense={selectedExpense}
+                    signedUrl={signedUrl}
+                    loading={modalLoading}
+                    error={modalError}
+                    onClose={closeModal}
+                    onRetry={() => selectedExpense.receipt_url && fetchSignedUrl(selectedExpense.receipt_url)}
+                />
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
@@ -187,18 +424,26 @@ export default function ExpensesPage() {
                                 {/* Title + property */}
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--dash-text)' }}>{e.title}</p>
-                                    <p className="text-xs truncate" style={{ color: 'var(--dash-muted)' }}>{(e as any).property?.name || 'Unlinked'} · {e.notes || ''}</p>
+                                    <p className="text-xs truncate" style={{ color: 'var(--dash-muted)' }}>{(e as any).property?.name || 'Unlinked'}{e.notes ? ` · ${e.notes}` : ''}</p>
                                 </div>
                                 {/* Category pill */}
-                                <span className="hidden md:inline-flex text-xs font-medium rounded-full px-2.5 py-1" style={{ background: catColor + '22', color: catColor }}>
+                                <span className="hidden md:inline-flex text-xs font-medium rounded-full px-2.5 py-1 flex-shrink-0 capitalize" style={{ background: catColor + '22', color: catColor }}>
                                     {e.category}
                                 </span>
                                 {/* Date */}
-                                <p className="text-xs hidden lg:block w-24" style={{ color: 'var(--dash-muted)' }}>{new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                <p className="text-xs hidden lg:block w-24 flex-shrink-0" style={{ color: 'var(--dash-muted)' }}>{new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                 {/* Amount */}
-                                <p className="text-sm font-bold w-20 text-right" style={{ color: 'var(--dash-text)' }}>${Number(e.amount).toLocaleString()}</p>
-                                {/* Receipt */}
-                                {e.receipt_url && <button onClick={() => openReceipt(e.receipt_url!)} className="text-xs font-medium underline flex-shrink-0 hidden lg:block hover:opacity-70 transition-opacity" style={{ color: '#E8392A' }}>Receipt</button>}
+                                <p className="text-sm font-bold w-20 text-right flex-shrink-0" style={{ color: 'var(--dash-text)' }}>${Number(e.amount).toLocaleString()}</p>
+                                {/* Receipt — opens modal */}
+                                {e.receipt_url && (
+                                    <button
+                                        onClick={() => openReceiptModal(e)}
+                                        className="text-xs font-medium underline flex-shrink-0 hidden lg:block hover:opacity-70 transition-opacity"
+                                        style={{ color: '#E8392A' }}
+                                    >
+                                        Receipt
+                                    </button>
+                                )}
                             </div>
                         )
                     })}
