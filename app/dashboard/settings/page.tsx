@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Suspense } from 'react'
+import { applyTheme, getTheme, Theme } from '@/lib/theme'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'profile' | 'preferences' | 'notifications' | 'security' | 'billing' | 'rent' | 'danger'
@@ -114,6 +115,7 @@ function SettingsPageInner() {
     const [currency, setCurrency] = useState('USD')
     const [timezone, setTimezone] = useState('UTC')
     const [dateFormat, setDateFormat] = useState('MM/DD/YYYY')
+    const [appTheme, setAppTheme] = useState<Theme>('system')
     const [savingPrefs, setSavingPrefs] = useState(false)
 
     // Notifications
@@ -153,6 +155,7 @@ function SettingsPageInner() {
         setCurrency(profile.currency ?? 'USD')
         setTimezone(profile.timezone ?? 'UTC')
         setDateFormat(profile.date_format ?? 'MM/DD/YYYY')
+        setAppTheme(getTheme())
         if (profile.email_notifications) setNotifs(profile.email_notifications)
 
         // Set Stripe status from profile
@@ -255,6 +258,9 @@ function SettingsPageInner() {
         setSavingPrefs(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { setSavingPrefs(false); return }
+
+        applyTheme(appTheme)
+
         const { error } = await supabase.from('profiles').upsert({ id: user.id, currency, timezone, date_format: dateFormat })
         if (error) { toast.error(error.message); setSavingPrefs(false); return }
         await refetch()
@@ -380,7 +386,7 @@ function SettingsPageInner() {
     const initial = (profile?.full_name || email)?.[0]?.toUpperCase() ?? 'U'
 
     // ─── Tab content ──────────────────────────────────────────────────────────
-    const TabContent = () => {
+    function renderTabContent() {
         switch (activeTab) {
 
             // ── Profile ───────────────────────────────────────────────────────
@@ -451,6 +457,7 @@ function SettingsPageInner() {
                 <Card>
                     <SectionTitle>Display Preferences</SectionTitle>
                     <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>These settings affect how dates, currencies, and times are displayed across the app.</p>
+                    <CustomSelect label="App Theme" value={appTheme} onChange={(v: any) => setAppTheme(v)} options={['light', 'dark', 'system']} />
                     <CustomSelect label="Currency" value={currency} onChange={setCurrency} options={['USD — US Dollar', 'EUR — Euro', 'GBP — British Pound', 'AUD — Australian Dollar', 'CAD — Canadian Dollar', 'INR — Indian Rupee', 'AED — UAE Dirham']} />
                     <CustomSelect label="Timezone" value={timezone} onChange={setTimezone} options={['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'Asia/Dubai', 'Australia/Sydney']} />
                     <CustomSelect label="Date Format" value={dateFormat} onChange={setDateFormat} options={['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']} />
@@ -781,7 +788,7 @@ function SettingsPageInner() {
 
                 {/* ── Right content ── */}
                 <div className="flex-1 min-w-0">
-                    <TabContent />
+                    {renderTabContent()}
                 </div>
             </div>
         </div>

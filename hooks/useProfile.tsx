@@ -55,7 +55,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (data) {
             setProfile({
                 id: data.id,
-                full_name: data.full_name ?? null,
+                full_name: data.full_name ?? user.user_metadata?.full_name ?? null,
                 phone: data.phone ?? null,
                 company_name: data.company_name ?? null,
                 avatar_url: data.avatar_url ?? null,
@@ -71,8 +71,26 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                 plan: data.plan ?? 'free',
             })
         } else {
-            // Upsert a blank profile row if missing
-            await supabase.from('profiles').upsert({ id: user.id })
+            // Upsert a blank profile row if missing, but pre-fill with metadata if available
+            const fullName = user.user_metadata?.full_name ?? null
+            await supabase.from('profiles').upsert({ id: user.id, full_name: fullName })
+            setProfile({
+                id: user.id,
+                full_name: fullName,
+                phone: null,
+                company_name: null,
+                avatar_url: null,
+                timezone: 'UTC',
+                currency: 'USD',
+                date_format: 'MM/DD/YYYY',
+                email_notifications: {
+                    rent_due: true,
+                    maintenance_update: true,
+                    lease_expiry: true,
+                    payment_received: true,
+                },
+                plan: 'free',
+            })
         }
         setLoading(false)
     }, [supabase])

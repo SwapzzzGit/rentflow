@@ -39,11 +39,11 @@ export default function RootLayout({
         {/* Anti-flash: apply theme class before React hydrates */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme')||'system';var r=document.documentElement;if(t==='system'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}r.classList.add(t);if(t==='dark'){r.classList.remove('light')}else{r.classList.remove('dark')}}catch(e){}})();`,
           }}
         />
       </head>
-      <body className="font-sans antialiased bg-[#080808] text-[#ffffff] overflow-x-hidden" suppressHydrationWarning>
+      <body className="font-sans antialiased bg-white dark:bg-[#080808] text-gray-900 dark:text-[#ffffff] overflow-x-hidden" suppressHydrationWarning>
         {children}
         <Analytics />
         <Toaster

@@ -48,15 +48,25 @@ export function MobileBottomNav() {
     return (
         <>
             <nav
-                className="md:hidden fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-around px-2 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.5)]"
+                className="md:hidden fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-around px-2 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgb(0,0,0,0.5)]"
                 style={{
-                    background: 'rgba(10, 10, 10, 0.85)',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'var(--mobile-nav-bg, rgba(255, 255, 255, 0.85))',
+                    borderTop: '1px solid var(--dash-border)',
                     backdropFilter: 'blur(24px)',
                     paddingTop: '10px',
                     paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
                 }}
             >
+                {/* CSS variables for mobile nav background if not using tailwind exclusively for backdrop blur + transparency */}
+                <style jsx>{`
+                    nav {
+                        background: rgba(255, 255, 255, 0.85);
+                    }
+                    :global(.dark) nav {
+                        background: rgba(10, 10, 10, 0.85);
+                    }
+                `}</style>
+
                 {mainNav.map(({ label, icon: Icon, route }) => {
                     const active = isActive(route)
                     return (
@@ -65,10 +75,10 @@ export function MobileBottomNav() {
                             href={route}
                             className={`flex flex-col items-center gap-1 group transition-all duration-300 ${active ? 'scale-110' : 'opacity-60 hover:opacity-100'}`}
                         >
-                            <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-emerald-500/10 text-emerald-400' : 'text-gray-400'}`}>
+                            <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'}`}>
                                 <Icon className="w-5 h-5 flex-shrink-0" />
                             </div>
-                            <span className={`text-[9px] font-bold leading-none tracking-tight ${active ? 'text-emerald-400' : 'text-gray-500'}`}>
+                            <span className={`text-[9px] font-bold leading-none tracking-tight ${active ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-500'}`}>
                                 {label}
                             </span>
                         </Link>
@@ -80,7 +90,7 @@ export function MobileBottomNav() {
                     onClick={() => setIsMoreOpen(true)}
                     className={`flex flex-col items-center gap-1 transition-all duration-300 ${isMoreOpen ? 'scale-110' : 'opacity-60 hover:opacity-100'}`}
                 >
-                    <div className="p-1.5 rounded-xl text-gray-400">
+                    <div className="p-1.5 rounded-xl text-gray-500 dark:text-gray-400">
                         <MoreHorizontal className="w-5 h-5 flex-shrink-0" />
                     </div>
                     <span className="text-[9px] font-bold leading-none tracking-tight text-gray-500">
@@ -92,12 +102,12 @@ export function MobileBottomNav() {
             {/* More Drawer */}
             {isMoreOpen && (
                 <div className="md:hidden fixed inset-0 z-[70] animate-in fade-in duration-200">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsMoreOpen(false)} />
+                    <div className="absolute inset-0 bg-black/40 dark:bg-black/90 backdrop-blur-md" onClick={() => setIsMoreOpen(false)} />
 
-                    <div className="absolute inset-x-4 bottom-[calc(theme(spacing.24)+env(safe-area-inset-bottom))] bg-gray-900 border border-gray-800 rounded-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
+                    <div className="absolute inset-x-4 bottom-[calc(theme(spacing.24)+env(safe-area-inset-bottom))] bg-white dark:bg-[#0D0D0D] border border-gray-100 dark:border-white/5 rounded-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-white">More Options</h3>
-                            <button onClick={() => setIsMoreOpen(false)} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-all">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">More Options</h3>
+                            <button onClick={() => setIsMoreOpen(false)} className="p-2 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -109,9 +119,9 @@ export function MobileBottomNav() {
                                     <button
                                         key={item.route}
                                         onClick={() => { router.push(item.route); setIsMoreOpen(false) }}
-                                        className={`flex flex-col items-start gap-3 p-4 rounded-2xl border transition-all ${active ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-gray-800/50 border-gray-800 hover:border-gray-700 text-gray-300'}`}
+                                        className={`flex flex-col items-start gap-3 p-4 rounded-2xl border transition-all ${active ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 dark:text-emerald-400' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 text-gray-600 dark:text-gray-300'}`}
                                     >
-                                        <div className={`p-2 rounded-xl ${active ? 'bg-emerald-500/20' : 'bg-gray-800'}`}>
+                                        <div className={`p-2 rounded-xl ${active ? 'bg-emerald-500/20' : 'bg-gray-100 dark:bg-white/5'}`}>
                                             <item.icon className="w-5 h-5" />
                                         </div>
                                         <span className="text-sm font-bold">{item.label}</span>
@@ -120,7 +130,7 @@ export function MobileBottomNav() {
                             })}
                         </div>
 
-                        <div className="mt-6 pt-6 border-t border-gray-800">
+                        <div className="mt-6 pt-6 border-t border-white/5">
                             <p className="text-[10px] text-center font-bold text-gray-600 uppercase tracking-widest">RentFlow Pro v1.2</p>
                         </div>
                     </div>

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { ProfileProvider, useProfile } from '@/hooks/useProfile'
+import { getTheme, applyTheme, toggleTheme as themeToggle, Theme } from '@/lib/theme'
 import {
     LayoutDashboard,
     Building2,
@@ -43,21 +44,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const { profile, email } = useProfile()
 
     const [open, setOpen] = useState(true)
-    const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+    const [theme, setTheme] = useState<Theme>('system')
     const [signingOut, setSigningOut] = useState(false)
 
     useEffect(() => {
         const savedSidebar = localStorage.getItem('sidebar')
         if (savedSidebar !== null) setOpen(savedSidebar === 'true')
 
-        const savedTheme = (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
+        const savedTheme = getTheme()
         setTheme(savedTheme)
         applyTheme(savedTheme)
     }, [])
 
-    function applyTheme(t: 'dark' | 'light') {
-        if (t === 'light') document.documentElement.classList.add('light')
-        else document.documentElement.classList.remove('light')
+    function handleApplyTheme(t: 'dark' | 'light') {
+        applyTheme(t)
     }
 
     function toggleSidebar() {
@@ -66,11 +66,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         localStorage.setItem('sidebar', String(next))
     }
 
-    function toggleTheme() {
-        const next = theme === 'dark' ? 'light' : 'dark'
+    function handleToggleTheme() {
+        const next = themeToggle()
         setTheme(next)
-        localStorage.setItem('theme', next)
-        applyTheme(next)
     }
 
     async function handleLogout() {
@@ -115,10 +113,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
                 {/* ─────────────── SIDEBAR — hidden on mobile ─────────────── */}
                 <aside
-                    className={`hidden md:flex flex-col flex-shrink-0 h-full overflow-hidden ${open ? 'w-[240px]' : 'w-[68px]'}`}
+                    className={`hidden md:flex flex-col flex-shrink-0 h-full overflow-hidden bg-white dark:bg-gray-950 ${open ? 'w-[240px]' : 'w-[68px]'}`}
                     style={{
                         transition: 'width 250ms cubic-bezier(0.16,1,0.3,1)',
-                        background: 'var(--dash-sidebar-bg)',
                         borderRight: '1px solid var(--dash-border)',
                     }}
                 >
@@ -201,15 +198,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {/* Theme toggle */}
                         <div className="relative group">
                             <div
-                                onClick={toggleTheme}
-                                className="flex items-center rounded-xl text-sm cursor-pointer transition-all"
+                                onClick={handleToggleTheme}
+                                className="flex items-center rounded-xl text-sm cursor-pointer transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-900"
                                 style={{
                                     justifyContent: open ? 'space-between' : 'center',
                                     padding: open ? '10px 12px' : '10px 0',
-                                    color: 'var(--dash-muted)',
                                 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dash-text)'; e.currentTarget.style.background = 'var(--dash-nav-hover)' }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dash-muted)'; e.currentTarget.style.background = 'transparent' }}
                             >
                                 <div className="flex items-center gap-3">
                                     {theme === 'dark' ? <Moon className="w-4 h-4 flex-shrink-0" /> : <Sun className="w-4 h-4 flex-shrink-0" />}
@@ -315,7 +309,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </div>
 
                     {/* Mobile Profile Bottom Sheet Portal Shell */}
-                    <MobileProfileDrawer profile={profile} email={email} onLogout={handleLogout} />
+                    <MobileProfileDrawer
+                        profile={profile}
+                        email={email}
+                        onLogout={handleLogout}
+                        theme={theme}
+                        onToggleTheme={handleToggleTheme}
+                    />
                 </main>
             </div>
             {/* Mobile bottom nav — only visible on < md screens */}
@@ -324,7 +324,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     )
 }
 
-function MobileProfileDrawer({ profile, email, onLogout }: any) {
+function MobileProfileDrawer({ profile, email, onLogout, theme, onToggleTheme }: { profile: any, email: string, onLogout: () => void, theme: Theme, onToggleTheme: () => void }) {
     const [isOpen, setIsOpen] = useState(false)
     const router = useRouter()
 
@@ -341,8 +341,8 @@ function MobileProfileDrawer({ profile, email, onLogout }: any) {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
 
             {/* Drawer */}
-            <div className="absolute inset-x-0 bottom-0 bg-gray-900 rounded-t-[32px] border-t border-gray-800 p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
-                <div className="w-12 h-1.5 bg-gray-700 rounded-full mx-auto mb-8" />
+            <div className="absolute inset-x-0 bottom-0 bg-white dark:bg-[#0D0D0D] rounded-t-[32px] border-t border-gray-200 dark:border-white/5 p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
+                <div className="w-12 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full mx-auto mb-8" />
 
                 <div className="flex items-center gap-4 mb-8">
                     {profile?.avatar_url
@@ -352,15 +352,35 @@ function MobileProfileDrawer({ profile, email, onLogout }: any) {
                         </div>
                     }
                     <div className="min-w-0">
-                        <h3 className="text-xl font-bold text-white truncate">{profile?.full_name || 'User'}</h3>
-                        <p className="text-sm text-gray-400 truncate">{email}</p>
-                        <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">{profile?.full_name || 'User'}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{email}</p>
+                        <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
                             {profile?.plan || 'Free'} Plan
                         </div>
                     </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
+                    {/* Theme Toggle (Mobile) - Redesigned to match screenshot */}
+                    <button
+                        onClick={onToggleTheme}
+                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/10 transition-all font-semibold"
+                    >
+                        <div className="flex items-center gap-4">
+                            {theme === 'dark' ? <Moon className="w-5 h-5 text-gray-400 dark:text-gray-500" /> : <Sun className="w-5 h-5 text-gray-400 dark:text-gray-500" />}
+                            <span className="text-gray-600 dark:text-gray-300"><span className="capitalize">{theme}</span> Mode</span>
+                        </div>
+                        <div
+                            className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${theme === 'dark' ? 'bg-[#E8392A]' : 'bg-gray-300 dark:bg-zinc-700'}`}
+                        >
+                            <div
+                                className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200 ${theme === 'dark' ? 'translate-x-[22px]' : 'translate-x-[2px]'}`}
+                            />
+                        </div>
+                    </button>
+
+                    <div className="h-1" />
+
                     {[
                         { label: 'Profile Settings', route: '/dashboard/settings?tab=profile', icon: Users },
                         { label: 'Preferences', route: '/dashboard/settings?tab=preferences', icon: LayoutDashboard },
@@ -369,14 +389,14 @@ function MobileProfileDrawer({ profile, email, onLogout }: any) {
                         <button
                             key={item.label}
                             onClick={() => { router.push(item.route); setIsOpen(false) }}
-                            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-800/40 border border-gray-800 active:bg-gray-800 transition-all text-gray-300 font-semibold"
+                            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/10 transition-all font-semibold text-gray-600 dark:text-gray-300"
                         >
-                            <item.icon className="w-5 h-5 text-gray-500" />
+                            <item.icon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                             {item.label}
                         </button>
                     ))}
 
-                    <div className="h-4" />
+                    <div className="h-2" />
 
                     <button
                         onClick={onLogout}
