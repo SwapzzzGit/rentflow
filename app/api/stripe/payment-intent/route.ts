@@ -65,13 +65,20 @@ export async function POST(req: NextRequest) {
             },
         }
 
-        // Add Connect transfer if landlord is onboarded
-        if (landlordProfile?.stripe_account_id && landlordProfile?.stripe_onboarded) {
+        // Determine if we should use Stripe Connect (Transfer to Landlord)
+        // We only use Connect if the landlord has an account ID AND has completed onboarding.
+        // Otherwise, we do a direct charge to the platform for testing/fallback purposes.
+        const canUseConnect = !!(landlordProfile?.stripe_account_id && landlordProfile?.stripe_onboarded)
+
+        if (canUseConnect) {
             const applicationFee = Math.round(amountInCents * 0.015) // 1.5% platform fee
             piParams.transfer_data = {
                 destination: landlordProfile.stripe_account_id,
             }
             piParams.application_fee_amount = applicationFee
+            console.log(`Using Stripe Connect for payment: ${landlordProfile.stripe_account_id}`)
+        } else {
+            console.log('Using direct charge (Connect not set up for landlord)')
         }
 
         const paymentIntent = await stripe.paymentIntents.create(piParams)

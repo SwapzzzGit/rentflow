@@ -279,17 +279,115 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 </aside>
 
                 {/* ─────────────── MAIN CONTENT ─────────────── */}
-                {/* flex-1 + min-w-0: takes ALL remaining space. Never needs fixed margins. */}
                 <main
-                    className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0"
+                    className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0 relative"
                     style={{ background: 'var(--dash-bg)', transition: 'background-color 200ms ease' }}
                 >
-                    {children}
+                    {/* ──── Mobile Sticky Header ──── */}
+                    <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-5 py-4 backdrop-blur-xl bg-[var(--dash-bg)]/80 border-b border-[var(--dash-border)]">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-[#E8392A] rounded-lg flex items-center justify-center flex-shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                                    <path d="M3 14V7.5L9 3L15 7.5V14C15 14.55 14.55 15 14 15H10.5V11H7.5V15H4C3.45 15 3 14.55 3 14Z" fill="white" />
+                                </svg>
+                            </div>
+                            <span className="text-lg font-black tracking-tight" style={{ fontFamily: 'var(--font-bricolage)' }}>
+                                RentFlow
+                            </span>
+                        </div>
+
+                        {/* Profile Avatar Trigger (Mobile) */}
+                        <div
+                            onClick={() => (window as any).toggleMobileProfile?.()}
+                            className="w-9 h-9 rounded-full ring-2 ring-emerald-500/20 active:scale-95 transition-all overflow-hidden cursor-pointer"
+                        >
+                            {profile?.avatar_url
+                                ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#E8392A' }}>
+                                    {(profile?.full_name || email)?.[0]?.toUpperCase() ?? 'U'}
+                                </div>
+                            }
+                        </div>
+                    </header>
+
+                    <div className="max-w-[1600px] mx-auto">
+                        {children}
+                    </div>
+
+                    {/* Mobile Profile Bottom Sheet Portal Shell */}
+                    <MobileProfileDrawer profile={profile} email={email} onLogout={handleLogout} />
                 </main>
             </div>
             {/* Mobile bottom nav — only visible on < md screens */}
             <MobileBottomNav />
         </>
+    )
+}
+
+function MobileProfileDrawer({ profile, email, onLogout }: any) {
+    const [isOpen, setIsOpen] = useState(false)
+    const router = useRouter()
+
+    useEffect(() => {
+        (window as any).toggleMobileProfile = () => setIsOpen(true)
+        return () => { delete (window as any).toggleMobileProfile }
+    }, [])
+
+    if (!isOpen) return null
+
+    return (
+        <div className="md:hidden fixed inset-0 z-[100] animate-in fade-in duration-200">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
+
+            {/* Drawer */}
+            <div className="absolute inset-x-0 bottom-0 bg-gray-900 rounded-t-[32px] border-t border-gray-800 p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
+                <div className="w-12 h-1.5 bg-gray-700 rounded-full mx-auto mb-8" />
+
+                <div className="flex items-center gap-4 mb-8">
+                    {profile?.avatar_url
+                        ? <img src={profile.avatar_url} alt="Avatar" className="w-16 h-16 rounded-full object-cover ring-4 ring-emerald-500/10" />
+                        : <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-xl" style={{ background: '#E8392A' }}>
+                            {(profile?.full_name || email)?.[0]?.toUpperCase() ?? 'U'}
+                        </div>
+                    }
+                    <div className="min-w-0">
+                        <h3 className="text-xl font-bold text-white truncate">{profile?.full_name || 'User'}</h3>
+                        <p className="text-sm text-gray-400 truncate">{email}</p>
+                        <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
+                            {profile?.plan || 'Free'} Plan
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    {[
+                        { label: 'Profile Settings', route: '/dashboard/settings?tab=profile', icon: Users },
+                        { label: 'Preferences', route: '/dashboard/settings?tab=preferences', icon: LayoutDashboard },
+                        { label: 'Security', route: '/dashboard/settings?tab=security', icon: Settings },
+                    ].map(item => (
+                        <button
+                            key={item.label}
+                            onClick={() => { router.push(item.route); setIsOpen(false) }}
+                            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-800/40 border border-gray-800 active:bg-gray-800 transition-all text-gray-300 font-semibold"
+                        >
+                            <item.icon className="w-5 h-5 text-gray-500" />
+                            {item.label}
+                        </button>
+                    ))}
+
+                    <div className="h-4" />
+
+                    <button
+                        onClick={onLogout}
+                        className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 active:bg-red-500/20 transition-all text-red-500 font-bold"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
     )
 }
 
