@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { SlidePanel } from '@/components/ui/slide-panel'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { CustomSelect } from '@/components/ui/custom-select'
 import toast from 'react-hot-toast'
 
 type Ticket = {
@@ -84,6 +85,10 @@ export default function MaintenancePage() {
     const inputCls = "w-full px-4 py-2.5 rounded-xl text-sm outline-none"
     const inputStyle = { background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)', color: 'var(--dash-text)' }
 
+    const propertyOptions = properties.map(p => ({ value: p.name, label: p.name }))
+    const propertyFormOptions = properties.map(p => ({ value: p.id, label: p.name }))
+    const tenantOptions = [{ value: '', label: 'None' }, ...propertyTenants.map(t => ({ value: t.id, label: t.full_name }))]
+
     return (
         <div className="p-8 w-full">
             {/* Header */}
@@ -108,18 +113,25 @@ export default function MaintenancePage() {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-6">
-                <select value={filterProp} onChange={e => setFilterProp(e.target.value)} className="px-3 py-2 rounded-xl text-sm outline-none" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Properties</option>
-                    {properties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
-                <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="px-3 py-2 rounded-xl text-sm outline-none" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Priorities</option>
-                    <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
-                </select>
-                <select value={filterRaised} onChange={e => setFilterRaised(e.target.value)} className="px-3 py-2 rounded-xl text-sm outline-none" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Raisers</option>
-                    <option value="landlord">Landlord</option><option value="tenant">Tenant</option>
-                </select>
+                <div className="min-w-[160px]">
+                    <CustomSelect value={filterProp} onChange={setFilterProp} options={propertyOptions} placeholder="All Properties" />
+                </div>
+                <div className="min-w-[150px]">
+                    <CustomSelect
+                        value={filterPriority}
+                        onChange={setFilterPriority}
+                        options={[{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]}
+                        placeholder="All Priorities"
+                    />
+                </div>
+                <div className="min-w-[150px]">
+                    <CustomSelect
+                        value={filterRaised}
+                        onChange={setFilterRaised}
+                        options={[{ value: 'landlord', label: 'Landlord' }, { value: 'tenant', label: 'Tenant' }]}
+                        placeholder="All Raisers"
+                    />
+                </div>
             </div>
 
             {/* Loading */}
@@ -177,30 +189,37 @@ export default function MaintenancePage() {
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Property *</label>
-                        <select className={inputCls} style={inputStyle} value={form.property_id} onChange={e => setForm(f => ({ ...f, property_id: e.target.value, tenant_id: '' }))}>
-                            <option value="">Select property...</option>
-                            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={form.property_id}
+                            onChange={v => setForm(f => ({ ...f, property_id: v, tenant_id: '' }))}
+                            options={propertyFormOptions}
+                            placeholder="Select property..."
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Tenant (optional)</label>
-                        <select className={inputCls} style={inputStyle} value={form.tenant_id} onChange={e => setForm(f => ({ ...f, tenant_id: e.target.value }))}>
-                            <option value="">None</option>
-                            {propertyTenants.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={form.tenant_id}
+                            onChange={v => setForm(f => ({ ...f, tenant_id: v }))}
+                            options={tenantOptions}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Category</label>
-                            <select className={inputCls} style={inputStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                            </select>
+                            <CustomSelect
+                                value={form.category}
+                                onChange={v => setForm(f => ({ ...f, category: v }))}
+                                options={CATEGORIES.map(c => ({ value: c, label: c }))}
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Priority</label>
-                            <select className={inputCls} style={inputStyle} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
-                                {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-                            </select>
+                            <CustomSelect
+                                value={form.priority}
+                                onChange={v => setForm(f => ({ ...f, priority: v }))}
+                                options={PRIORITIES.map(p => ({ value: p, label: p }))}
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -216,9 +235,11 @@ export default function MaintenancePage() {
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Status</label>
-                        <select className={inputCls} style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                            <option value="open">Open</option><option value="in progress">In Progress</option><option value="fixed">Fixed</option>
-                        </select>
+                        <CustomSelect
+                            value={form.status}
+                            onChange={v => setForm(f => ({ ...f, status: v }))}
+                            options={[{ value: 'open', label: 'Open' }, { value: 'in progress', label: 'In Progress' }, { value: 'fixed', label: 'Fixed' }]}
+                        />
                     </div>
                     <div className="flex gap-3 pt-4">
                         <button onClick={() => setPanelOpen(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ color: 'var(--dash-muted)', background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}>Cancel</button>

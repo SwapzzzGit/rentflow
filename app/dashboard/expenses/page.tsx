@@ -5,6 +5,7 @@ import { Plus, Receipt, Download, Filter, X, Share2, ExternalLink, Loader2 } fro
 import { createClient } from '@/lib/supabase/client'
 import { SlidePanel } from '@/components/ui/slide-panel'
 import { EmptyState } from '@/components/ui/empty-state'
+import { CustomSelect } from '@/components/ui/custom-select'
 import toast from 'react-hot-toast'
 
 type Expense = {
@@ -392,14 +393,22 @@ export default function ExpensesPage() {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-6">
-                <select value={filterProp} onChange={e => setFilterProp(e.target.value)} className="px-3 py-2 rounded-xl text-sm outline-none" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Properties</option>
-                    {properties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
-                <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="px-3 py-2 rounded-xl text-sm outline-none" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Categories</option>
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
+                <div className="min-w-[160px]">
+                    <CustomSelect
+                        value={filterProp}
+                        onChange={setFilterProp}
+                        options={properties.map(p => ({ value: p.name, label: p.name }))}
+                        placeholder="All Properties"
+                    />
+                </div>
+                <div className="min-w-[170px]">
+                    <CustomSelect
+                        value={filterCat}
+                        onChange={setFilterCat}
+                        options={CATEGORIES.map(c => ({ value: c, label: c }))}
+                        placeholder="All Categories"
+                    />
+                </div>
             </div>
 
             {/* Loading */}
@@ -470,16 +479,19 @@ export default function ExpensesPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Category</label>
-                            <select className={inputCls} style={inputStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                            </select>
+                            <CustomSelect
+                                value={form.category}
+                                onChange={v => setForm(f => ({ ...f, category: v }))}
+                                options={CATEGORIES.map(c => ({ value: c, label: c }))}
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Property</label>
-                            <select className={inputCls} style={inputStyle} value={form.property_id} onChange={e => setForm(f => ({ ...f, property_id: e.target.value }))}>
-                                <option value="">None</option>
-                                {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                            <CustomSelect
+                                value={form.property_id}
+                                onChange={v => setForm(f => ({ ...f, property_id: v }))}
+                                options={[{ value: '', label: 'None' }, ...properties.map(p => ({ value: p.id, label: p.name }))]}
+                            />
                         </div>
                     </div>
                     <div className="space-y-1.5">

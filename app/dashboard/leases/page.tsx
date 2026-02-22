@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { SlidePanel } from '@/components/ui/slide-panel'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { CustomSelect } from '@/components/ui/custom-select'
 import toast from 'react-hot-toast'
 
 type Lease = {
@@ -89,9 +90,7 @@ export default function LeasesPage() {
     }
 
     const initials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-
     const daysLeft = (endDate: string) => Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000)
-
     const daysColor = (days: number) => {
         if (days < 0) return '#64748B'
         if (days < 30) return '#E8392A'
@@ -101,6 +100,9 @@ export default function LeasesPage() {
 
     const inputStyle = { background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)', color: 'var(--dash-text)' }
     const inputCls = "w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+
+    const propertyOptions = properties.map(p => ({ value: p.id, label: p.name }))
+    const tenantOptions = propertyTenants.map(t => ({ value: t.id, label: t.full_name }))
 
     return (
         <div className="p-8 w-full">
@@ -193,17 +195,21 @@ export default function LeasesPage() {
                 <div className="space-y-5">
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Property *</label>
-                        <select className={inputCls} style={inputStyle} value={form.property_id} onChange={e => setForm(f => ({ ...f, property_id: e.target.value, tenant_id: '' }))}>
-                            <option value="">Select property...</option>
-                            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={form.property_id}
+                            onChange={v => setForm(f => ({ ...f, property_id: v, tenant_id: '' }))}
+                            options={propertyOptions}
+                            placeholder="Select property..."
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Tenant *</label>
-                        <select className={inputCls} style={inputStyle} value={form.tenant_id} onChange={e => setForm(f => ({ ...f, tenant_id: e.target.value }))}>
-                            <option value="">Select tenant...</option>
-                            {propertyTenants.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={form.tenant_id}
+                            onChange={v => setForm(f => ({ ...f, tenant_id: v }))}
+                            options={tenantOptions}
+                            placeholder="Select tenant..."
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
@@ -222,11 +228,11 @@ export default function LeasesPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Status</label>
-                            <select className={inputCls} style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                                <option value="active">Active</option>
-                                <option value="expired">Expired</option>
-                                <option value="renewed">Renewed</option>
-                            </select>
+                            <CustomSelect
+                                value={form.status}
+                                onChange={v => setForm(f => ({ ...f, status: v }))}
+                                options={[{ value: 'active', label: 'Active' }, { value: 'expired', label: 'Expired' }, { value: 'renewed', label: 'Renewed' }]}
+                            />
                         </div>
                     </div>
                     <div className="space-y-1.5">

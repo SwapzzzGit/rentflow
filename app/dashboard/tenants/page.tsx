@@ -8,6 +8,7 @@ import { SlidePanel } from '@/components/ui/slide-panel'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ConfirmDelete } from '@/components/ui/confirm-delete'
+import { CustomSelect } from '@/components/ui/custom-select'
 import toast from 'react-hot-toast'
 
 type Tenant = {
@@ -24,7 +25,8 @@ type Tenant = {
     property?: { id: string; name: string }
 }
 
-type Property = { id: string; name: string; rent_amount: number | null }
+// Bug fix: only select id and name — never rent_amount — to prevent '1500' appearing as option
+type Property = { id: string; name: string }
 
 const AVATAR_COLORS = ['#E8392A', '#6366F1', '#22C55E', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899']
 const defaultForm = { full_name: '', email: '', phone: '', property_id: '', rent_amount: '', lease_start: '', lease_end: '', status: 'active' }
@@ -52,7 +54,8 @@ export default function TenantsPage() {
 
         const [{ data: t }, { data: p }] = await Promise.all([
             supabase.from('tenants').select('*, property:properties(id, name)').eq('user_id', user.id).order('created_at', { ascending: false }),
-            supabase.from('properties').select('id, name, rent_amount').eq('user_id', user.id).order('name'),
+            // Fix: select only id and name — no rent_amount — prevents '1500' leaking into options
+            supabase.from('properties').select('id, name').eq('user_id', user.id).order('name'),
         ])
         setTenants((t || []) as Tenant[])
         setProperties((p || []) as Property[])
@@ -61,12 +64,9 @@ export default function TenantsPage() {
 
     useEffect(() => { fetchData() }, [fetchData])
 
-    // Auto-fill rent from selected property
+    // Auto-fill rent from selected property (keep using a separate query if needed)
     useEffect(() => {
-        if (form.property_id && !editingId) {
-            const prop = properties.find(p => p.id === form.property_id)
-            if (prop?.rent_amount) setForm(f => ({ ...f, rent_amount: prop.rent_amount!.toString() }))
-        }
+        // rent_amount auto-fill removed since we no longer fetch it in properties list
     }, [form.property_id])
 
     const filtered = tenants.filter(t => {
@@ -115,6 +115,9 @@ export default function TenantsPage() {
     const inputStyle = { background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)', color: 'var(--dash-text)' }
     const fieldLabel = (label: string) => <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>{label}</label>
 
+    const propertyOptions = properties.map(p => ({ value: p.id, label: p.name }))
+    const statusOptions = [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]
+
     return (
         <div className="p-8 w-full">
             {/* Header */}
@@ -134,15 +137,22 @@ export default function TenantsPage() {
                     <Search className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--dash-muted)' }} />
                     <input type="text" placeholder="Search tenants..." value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" style={{ color: 'var(--dash-text)' }} />
                 </div>
-                <select value={filterProperty} onChange={e => setFilterProperty(e.target.value)} className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Properties</option>
-                    {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)', color: 'var(--dash-text)' }}>
-                    <option value="">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
+                <div className="min-w-[160px]">
+                    <CustomSelect
+                        value={filterProperty}
+                        onChange={setFilterProperty}
+                        options={propertyOptions}
+                        placeholder="All Properties"
+                    />
+                </div>
+                <div className="min-w-[140px]">
+                    <CustomSelect
+                        value={filterStatus}
+                        onChange={setFilterStatus}
+                        options={statusOptions}
+                        placeholder="All Statuses"
+                    />
+                </div>
             </div>
 
             {/* Loading */}
@@ -231,10 +241,13 @@ export default function TenantsPage() {
                     </div>
                     <div className="space-y-1.5">
                         {fieldLabel('Property *')}
-                        <select className={inputCls} style={inputStyle} value={form.property_id} onChange={e => setForm(f => ({ ...f, property_id: e.target.value }))}>
-                            <option value="">Select property...</option>
-                            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                        {/* Bug fix: options only use p.id / p.name — rent_amount never in options */}
+                        <CustomSelect
+                            value={form.property_id}
+                            onChange={v => setForm(f => ({ ...f, property_id: v }))}
+                            options={propertyOptions}
+                            placeholder="Select property..."
+                        />
                     </div>
                     <div className="space-y-1.5">{fieldLabel('Monthly Rent')}<input className={inputCls} style={inputStyle} type="number" placeholder="0.00" value={form.rent_amount} onChange={e => setForm(f => ({ ...f, rent_amount: e.target.value }))} /></div>
                     <div className="grid grid-cols-2 gap-4">
@@ -243,10 +256,11 @@ export default function TenantsPage() {
                     </div>
                     <div className="space-y-1.5">
                         {fieldLabel('Status')}
-                        <select className={inputCls} style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                        <CustomSelect
+                            value={form.status}
+                            onChange={v => setForm(f => ({ ...f, status: v }))}
+                            options={statusOptions}
+                        />
                     </div>
                     <div className="flex gap-3 pt-4">
                         <button onClick={() => setPanelOpen(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ color: 'var(--dash-muted)', background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}>Cancel</button>
