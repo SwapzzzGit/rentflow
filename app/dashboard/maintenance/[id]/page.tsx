@@ -116,12 +116,31 @@ export default function MaintenanceDetailPage() {
 
         if (tkError) { toast.error(tkError.message); setSavingReceipt(false); return }
 
-        // Auto-create expense record
-        const { error: expError } = await supabase.from('expenses').upsert([{
-            user_id: user.id, property_id: ticket?.property ? (await supabase.from('maintenance_tickets').select('property_id').eq('id', id).single()).data?.property_id : null,
-            maintenance_ticket_id: id, title: ticket?.title || 'Maintenance', amount: parseFloat(receiptAmount),
-            category: receiptCategory.toLowerCase(), receipt_url: receiptUrl, date: new Date().toISOString().split('T')[0], notes: `Cost bearer: ${costBearer}. Landlord: ${landlord}%, Tenant: ${tenantP}%`,
-        }], { onConflict: 'maintenance_ticket_id' })
+        // Get property_id for the expense
+        const { data: tkData } = await supabase.from('maintenance_tickets').select('property_id').eq('id', id).single()
+        const propertyId = tkData?.property_id || null
+
+        const expensePayload = {
+            user_id: user.id, property_id: propertyId, maintenance_ticket_id: id,
+            title: ticket?.title || 'Maintenance', amount: parseFloat(receiptAmount),
+            category: receiptCategory.toLowerCase(), receipt_url: receiptUrl,
+            date: new Date().toISOString().split('T')[0],
+            notes: `Cost bearer: ${costBearer}. Landlord: ${landlord}%, Tenant: ${tenantP}%`,
+        }
+
+        // Check if expense already linked to this ticket
+        const { data: existingExp } = await supabase.from('expenses').select('id').eq('maintenance_ticket_id', id).maybeSingle()
+
+        let expError
+        if (existingExp?.id) {
+            // Update existing linked expense
+            const { error } = await supabase.from('expenses').update(expensePayload).eq('id', existingExp.id)
+            expError = error
+        } else {
+            // Insert new expense
+            const { error } = await supabase.from('expenses').insert([expensePayload])
+            expError = error
+        }
 
         if (expError) toast.error('Warning: Could not link expense: ' + expError.message)
 
