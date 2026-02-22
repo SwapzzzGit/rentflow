@@ -153,9 +153,13 @@ export default function SettingsPage() {
         if (!avatarFile) return profile?.avatar_url ?? null
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return null
-        const ext = avatarFile.name.split('.').pop()
+        const ext = (avatarFile.name.split('.').pop() ?? 'jpg').toLowerCase()
+        // RLS policy checks foldername[1] = auth.uid() — path must be exactly {uid}/avatar.{ext}
         const path = `${user.id}/avatar.${ext}`
-        const { error } = await supabase.storage.from('avatars').upload(path, avatarFile, { upsert: true })
+        const { error } = await supabase.storage.from('avatars').upload(path, avatarFile, {
+            upsert: true,
+            cacheControl: '3600',
+        })
         if (error) { toast.error('Avatar upload failed: ' + error.message); return null }
         const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
         return pub.publicUrl + `?t=${Date.now()}` // Cache bust
@@ -170,13 +174,19 @@ export default function SettingsPage() {
 
         const avatarUrl = await uploadAvatarAndSave()
 
-        const { error } = await supabase.from('profiles').upsert({
+        // Only include optional fields when non-empty — prevents schema errors
+        // if company_name / phone columns haven't been added yet via:
+        //   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_name text;
+        //   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone text;
+        const updates: Record<string, unknown> = {
             id: user.id,
             full_name: fullName.trim(),
-            phone: phone.trim() || null,
-            company_name: company.trim() || null,
+            ...(phone.trim() ? { phone: phone.trim() } : {}),
+            ...(company.trim() ? { company_name: company.trim() } : {}),
             ...(avatarUrl !== null ? { avatar_url: avatarUrl } : {}),
-        })
+        }
+
+        const { error } = await supabase.from('profiles').upsert(updates)
 
         if (error) { toast.error(error.message); setSavingProfile(false); return }
         await refetch()
