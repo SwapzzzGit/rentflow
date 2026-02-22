@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
+import { ProfileProvider, useProfile } from '@/hooks/useProfile'
 import {
     LayoutDashboard,
     Building2,
@@ -32,15 +33,15 @@ const navItems = [
     { label: 'Settings', icon: Settings, route: '/dashboard/settings' },
 ]
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+// The inner layout consumes the ProfileProvider context
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const router = useRouter()
     const supabase = createClient()
+    const { profile, email } = useProfile()
 
     const [open, setOpen] = useState(true)
     const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-    const [userEmail, setUserEmail] = useState('')
-    const [userInitial, setUserInitial] = useState('U')
     const [signingOut, setSigningOut] = useState(false)
 
     useEffect(() => {
@@ -50,15 +51,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const savedTheme = (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
         setTheme(savedTheme)
         applyTheme(savedTheme)
-
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user?.email) {
-                setUserEmail(user.email)
-                setUserInitial(
-                    (user.user_metadata?.full_name || user.email)?.[0]?.toUpperCase() ?? 'U'
-                )
-            }
-        })
     }, [])
 
     function applyTheme(t: 'dark' | 'light') {
@@ -239,20 +231,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         {/* Divider */}
                         <div className="my-2" style={{ height: '1px', background: 'var(--dash-divider)' }} />
 
-                        {/* User info */}
+                        {/* User info — live from useProfile() */}
                         <div
                             className="flex items-center rounded-xl px-2 py-2 mb-0.5 overflow-hidden"
                             style={{ gap: open ? '10px' : '0', justifyContent: open ? 'flex-start' : 'center' }}
                         >
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white" style={{ background: '#E8392A' }}>
-                                {userInitial}
-                            </div>
+                            {profile?.avatar_url
+                                ? <img src={profile.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                : <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white" style={{ background: '#E8392A' }}>
+                                    {(profile?.full_name || email)?.[0]?.toUpperCase() ?? 'U'}
+                                </div>
+                            }
                             <div className="overflow-hidden min-w-0">
                                 <p className="text-xs font-medium truncate" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-text)' }}>
-                                    {userEmail || 'Loading...'}
+                                    {profile?.full_name || email || 'Loading...'}
                                 </p>
-                                <p className="text-[10px] mt-0.5" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-muted)' }}>
-                                    Free plan
+                                <p className="text-[10px] mt-0.5 capitalize" style={{ ...labelStyle, transition: 'max-width 250ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease', color: 'var(--dash-muted)' }}>
+                                    {profile?.plan ?? 'free'} plan
                                 </p>
                             </div>
                         </div>
@@ -293,5 +288,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Mobile bottom nav — only visible on < md screens */}
             <MobileBottomNav />
         </>
+    )
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <ProfileProvider>
+            <DashboardLayoutInner>{children}</DashboardLayoutInner>
+        </ProfileProvider>
     )
 }
