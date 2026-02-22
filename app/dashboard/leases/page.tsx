@@ -68,7 +68,8 @@ export default function LeasesPage() {
 
         if (uploadFile) {
             const ext = uploadFile.name.split('.').pop()
-            const path = `${user.id}/${Date.now()}-lease.${ext}`
+            const timestamp = Date.now()
+            const path = `${user.id}/leases/${timestamp}-lease.${ext}`
             const { error: upErr } = await supabase.storage.from('lease-documents').upload(path, uploadFile)
             if (upErr) { toast.error('Failed to upload lease document: ' + upErr.message); setSaving(false); return }
             const { data: urlData } = supabase.storage.from('lease-documents').getPublicUrl(path)

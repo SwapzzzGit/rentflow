@@ -98,7 +98,7 @@ export default function MaintenanceDetailPage() {
         // Upload file if new one selected
         if (receiptFile) {
             const ext = receiptFile.name.split('.').pop()
-            const path = `${user.id}/${id}-receipt.${ext}`
+            const path = `${user.id}/maintenance/${id}/${Date.now()}-receipt.${ext}`
             const { error: uploadError } = await supabase.storage.from('receipts').upload(path, receiptFile, { upsert: true })
             if (uploadError) { toast.error('Failed to upload receipt: ' + uploadError.message); setSavingReceipt(false); return }
             const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path)
