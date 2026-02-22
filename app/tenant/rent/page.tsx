@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CustomSelect } from '@/components/ui/custom-select'
-import { DollarSign } from 'lucide-react'
+import { DollarSign, Zap } from 'lucide-react'
 
-type Payment = { id: string; amount: number; due_date: string; paid_date: string | null; status: string; notes: string | null }
+type Payment = { id: string; amount: number; late_fee_amount?: number; due_date: string; paid_date: string | null; status: string; notes: string | null }
 
 function StatusChip({ status }: { status: string }) {
     const map: Record<string, { bg: string; color: string; label: string }> = {
@@ -97,26 +97,44 @@ export default function TenantRentPage() {
             ) : (
                 <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid #E9EBF0' }}>
                     {/* Header */}
-                    <div className="hidden sm:grid grid-cols-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider" style={{ background: '#F9FAFB', color: '#9CA3AF', borderBottom: '1px solid #E9EBF0' }}>
+                    <div className="hidden sm:grid grid-cols-5 px-5 py-3 text-xs font-semibold uppercase tracking-wider" style={{ background: '#F9FAFB', color: '#9CA3AF', borderBottom: '1px solid #E9EBF0' }}>
                         <span>Month</span>
                         <span>Amount</span>
                         <span>Status</span>
                         <span>Paid Date</span>
+                        <span>Action</span>
                     </div>
                     {filtered.map((pay, i) => (
                         <div
                             key={pay.id}
-                            className="flex sm:grid sm:grid-cols-4 items-center px-5 py-4 gap-3"
+                            className="flex sm:grid sm:grid-cols-5 items-center px-5 py-4 gap-3"
                             style={{ borderBottom: i < filtered.length - 1 ? '1px solid #F3F4F6' : 'none' }}
                         >
                             <p className="text-sm font-medium flex-1" style={{ color: '#111' }}>
                                 {new Date(pay.due_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
                             </p>
-                            <p className="text-sm font-semibold" style={{ color: '#111' }}>${Number(pay.amount).toLocaleString()}</p>
+                            <div>
+                                <p className="text-sm font-semibold" style={{ color: '#111' }}>${Number(pay.amount).toLocaleString()}</p>
+                                {Number(pay.late_fee_amount) > 0 && (
+                                    <p className="text-xs" style={{ color: '#E8392A' }}>+${Number(pay.late_fee_amount).toLocaleString()} late fee</p>
+                                )}
+                            </div>
                             <StatusChip status={pay.status} />
                             <p className="text-sm hidden sm:block" style={{ color: '#6B7280' }}>
                                 {pay.paid_date ? new Date(pay.paid_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                             </p>
+                            {pay.status !== 'paid' ? (
+                                <button
+                                    onClick={() => router.push(`/tenant/rent/pay?id=${pay.id}`)}
+                                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 whitespace-nowrap"
+                                    style={{ background: '#E8392A' }}
+                                >
+                                    <Zap className="w-3 h-3" />
+                                    Pay Online
+                                </button>
+                            ) : (
+                                <div />
+                            )}
                         </div>
                     ))}
                 </div>

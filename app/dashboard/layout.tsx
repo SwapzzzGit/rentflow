@@ -13,6 +13,7 @@ import {
     DollarSign,
     Wrench,
     BarChart3,
+    BarChart2,
     FileText,
     Settings,
     LogOut,
@@ -29,6 +30,7 @@ const navItems = [
     { label: 'Rent', icon: DollarSign, route: '/dashboard/rent' },
     { label: 'Maintenance', icon: Wrench, route: '/dashboard/maintenance' },
     { label: 'Expenses', icon: BarChart3, route: '/dashboard/expenses' },
+    { label: 'Reports', icon: BarChart2, route: '/dashboard/reports' },
     { label: 'Leases', icon: FileText, route: '/dashboard/leases' },
     { label: 'Settings', icon: Settings, route: '/dashboard/settings' },
 ]

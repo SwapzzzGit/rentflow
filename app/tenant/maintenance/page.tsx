@@ -1,19 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { SlidePanel } from '@/components/ui/slide-panel'
-import { Plus, Wrench } from 'lucide-react'
+import { Plus, Wrench, Image, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Ticket = { id: string; title: string; description: string | null; status: string; priority: string; category: string; created_at: string }
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const CATEGORIES = ['Plumbing', 'Electrical', 'Painting', 'Cleaning', 'HVAC', 'Appliance', 'Structural', 'Other']
-
 const defaultForm = { title: '', description: '', priority: 'medium', category: 'Other' }
+const MAX_PHOTOS = 3
 
 function StatusChip({ status }: { status: string }) {
     const map: Record<string, { bg: string; color: string; label: string }> = {
@@ -34,12 +34,19 @@ function PriorityDot({ priority }: { priority: string }) {
 export default function TenantMaintenancePage() {
     const supabase = createClient()
     const router = useRouter()
+    const photoRef = useRef<HTMLInputElement>(null)
     const [tenantId, setTenantId] = useState('')
+    const [userId, setUserId] = useState('')
     const [tickets, setTickets] = useState<Ticket[]>([])
     const [loading, setLoading] = useState(true)
     const [panelOpen, setPanelOpen] = useState(false)
     const [form, setForm] = useState(defaultForm)
     const [saving, setSaving] = useState(false)
+
+    // Photo upload state
+    const [photos, setPhotos] = useState<File[]>([])
+    const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+    const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
     useEffect(() => {
         async function load() {
@@ -50,6 +57,7 @@ export default function TenantMaintenancePage() {
             if (!t) { router.push('/tenant/login'); return }
 
             setTenantId(t.id)
+            setUserId(user.id)
 
             const { data } = await supabase
                 .from('maintenance_tickets')
@@ -63,28 +71,69 @@ export default function TenantMaintenancePage() {
         load()
     }, [supabase, router])
 
+    function handlePhotoSelect(files: FileList | null) {
+        if (!files) return
+        const picked = Array.from(files).slice(0, MAX_PHOTOS - photos.length)
+        const newPhotos = [...photos, ...picked].slice(0, MAX_PHOTOS)
+        setPhotos(newPhotos)
+        setPhotoPreviews(newPhotos.map(f => URL.createObjectURL(f)))
+    }
+
+    function removePhoto(idx: number) {
+        const p = photos.filter((_, i) => i !== idx)
+        setPhotos(p)
+        setPhotoPreviews(p.map(f => URL.createObjectURL(f)))
+    }
+
+    async function uploadPhotos(uid: string, ticketId: string): Promise<string[]> {
+        const paths: string[] = []
+        for (const file of photos) {
+            const ext = file.name.split('.').pop()
+            const path = `${uid}/maintenance/tenant/${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+            const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: true })
+            if (!error) paths.push(path)
+        }
+        return paths
+    }
+
     async function handleSubmit() {
         if (!form.title) { toast.error('Please enter a title'); return }
         setSaving(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user || !tenantId) { toast.error('Not authenticated'); setSaving(false); return }
 
-        const { error } = await supabase.from('maintenance_tickets').insert([{
+        // Insert ticket first to get ID
+        const { data: newTicket, error } = await supabase.from('maintenance_tickets').insert([{
             tenant_id: tenantId,
-            user_id: user.id, // will be the tenant's auth uid — landlord RLS handles their own
+            user_id: user.id,
             title: form.title,
             description: form.description || null,
             priority: form.priority,
             category: form.category,
             status: 'open',
             raised_by: 'tenant',
-        }])
+            tenant_photos: [],
+        }]).select('id').single()
 
-        if (error) { toast.error(error.message); setSaving(false); return }
+        if (error || !newTicket) { toast.error(error?.message || 'Failed to submit'); setSaving(false); return }
+
+        // Upload photos if any
+        if (photos.length > 0) {
+            setUploadingPhotos(true)
+            const paths = await uploadPhotos(user.id, newTicket.id)
+            if (paths.length > 0) {
+                await supabase.from('maintenance_tickets').update({ tenant_photos: paths }).eq('id', newTicket.id)
+            }
+            setUploadingPhotos(false)
+        }
+
         toast.success('Maintenance request submitted!')
         setSaving(false)
         setPanelOpen(false)
         setForm(defaultForm)
+        setPhotos([])
+        setPhotoPreviews([])
+
         // Refetch
         const { data } = await supabase.from('maintenance_tickets').select('id, title, description, status, priority, category, created_at').eq('tenant_id', tenantId).order('created_at', { ascending: false })
         setTickets((data || []) as Ticket[])
@@ -107,7 +156,7 @@ export default function TenantMaintenancePage() {
                     <p className="text-sm mt-0.5" style={{ color: '#6B7280' }}>{tickets.length} total requests</p>
                 </div>
                 <button
-                    onClick={() => { setForm(defaultForm); setPanelOpen(true) }}
+                    onClick={() => { setForm(defaultForm); setPhotos([]); setPhotoPreviews([]); setPanelOpen(true) }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90"
                     style={{ background: '#E8392A' }}
                 >
@@ -167,10 +216,67 @@ export default function TenantMaintenancePage() {
                             <CustomSelect value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
                         </div>
                     </div>
+
+                    {/* ── Photo upload ── */}
+                    <div>
+                        <label className={labelCls} style={labelStyle}>
+                            <Image className="inline w-3 h-3 mr-1" style={{ color: '#9CA3AF' }} />
+                            Add Photos (optional, up to {MAX_PHOTOS})
+                        </label>
+
+                        {photoPreviews.length > 0 && (
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                {photoPreviews.map((src, idx) => (
+                                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+                                        <img src={src} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <button
+                                            onClick={() => removePhoto(idx)}
+                                            className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                                            style={{ background: 'rgba(0,0,0,0.6)' }}
+                                        >
+                                            <X className="w-3 h-3 text-white" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {/* Add more slot */}
+                                {photos.length < MAX_PHOTOS && (
+                                    <button
+                                        onClick={() => photoRef.current?.click()}
+                                        className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all hover:opacity-80"
+                                        style={{ background: '#F9FAFB', border: '1.5px dashed #D1D5DB' }}
+                                    >
+                                        <Plus className="w-5 h-5" style={{ color: '#9CA3AF' }} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {photos.length === 0 && (
+                            <button
+                                onClick={() => photoRef.current?.click()}
+                                className="w-full py-8 rounded-xl flex flex-col items-center gap-2 transition-all hover:opacity-80"
+                                style={{ background: '#F9FAFB', border: '1.5px dashed #D1D5DB' }}
+                            >
+                                <Image className="w-6 h-6" style={{ color: '#9CA3AF' }} />
+                                <span className="text-xs" style={{ color: '#9CA3AF' }}>Tap to add photos</span>
+                            </button>
+                        )}
+
+                        <input
+                            ref={photoRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={e => handlePhotoSelect(e.target.files)}
+                        />
+                        <p className="text-xs mt-1.5" style={{ color: '#9CA3AF' }}>{photos.length}/{MAX_PHOTOS} photos selected</p>
+                    </div>
+
                     <div className="flex gap-3 pt-2">
                         <button onClick={() => setPanelOpen(false)} className="flex-1 py-3 rounded-xl text-sm font-semibold" style={{ background: '#F3F4F6', color: '#374151' }}>Cancel</button>
-                        <button onClick={handleSubmit} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60" style={{ background: '#E8392A' }}>
-                            {saving ? 'Submitting…' : 'Submit Request'}
+                        <button onClick={handleSubmit} disabled={saving || uploadingPhotos} className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60" style={{ background: '#E8392A' }}>
+                            {uploadingPhotos ? 'Uploading photos…' : saving ? 'Submitting…' : 'Submit Request'}
                         </button>
                     </div>
                 </div>

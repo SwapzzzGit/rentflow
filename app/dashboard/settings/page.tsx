@@ -1,17 +1,19 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/hooks/useProfile'
 import {
     User, Settings2, Bell, Lock, CreditCard, AlertTriangle,
-    ChevronDown, Camera, Eye, EyeOff, Check, X
+    ChevronDown, Camera, Eye, EyeOff, Check, X,
+    Zap, BadgeCheck, ExternalLink, DollarSign, Clock
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Suspense } from 'react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type TabId = 'profile' | 'preferences' | 'notifications' | 'security' | 'billing' | 'danger'
+type TabId = 'profile' | 'preferences' | 'notifications' | 'security' | 'billing' | 'rent' | 'danger'
 
 const TABS: { id: TabId; label: string; icon: React.ElementType; danger?: boolean }[] = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -19,6 +21,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType; danger?: boolea
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Lock },
     { id: 'billing', label: 'Plan & Billing', icon: CreditCard },
+    { id: 'rent', label: 'Rent Settings', icon: DollarSign },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle, danger: true },
 ]
 
@@ -91,10 +94,11 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
-export default function SettingsPage() {
+function SettingsPageInner() {
     const { profile, email, refetch } = useProfile()
     const supabase = createClient()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const avatarRef = useRef<HTMLInputElement>(null)
     const [activeTab, setActiveTab] = useState<TabId>('profile')
 
@@ -128,7 +132,18 @@ export default function SettingsPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [exportingData, setExportingData] = useState(false)
 
-    // Populate from profile
+    // Stripe Connect
+    const [stripeConnecting, setStripeConnecting] = useState(false)
+    const [stripeStatus, setStripeStatus] = useState<'not_connected' | 'pending' | 'connected'>('not_connected')
+
+    // Rent Settings (late fees)
+    const [gracePeriod, setGracePeriod] = useState('5')
+    const [feeType, setFeeType] = useState('flat')
+    const [feeAmount, setFeeAmount] = useState('50')
+    const [savingRentSettings, setSavingRentSettings] = useState(false)
+    const [lateFeeRuleId, setLateFeeRuleId] = useState<string | null>(null)
+
+    // Populate from profile + check URL params for Stripe status
     useEffect(() => {
         if (!profile) return
         setFullName(profile.full_name ?? '')
@@ -139,7 +154,47 @@ export default function SettingsPage() {
         setTimezone(profile.timezone ?? 'UTC')
         setDateFormat(profile.date_format ?? 'MM/DD/YYYY')
         if (profile.email_notifications) setNotifs(profile.email_notifications)
+
+        // Set Stripe status from profile
+        const anyProfile = profile as any
+        if (anyProfile.stripe_onboarded) setStripeStatus('connected')
+        else if (anyProfile.stripe_account_id) setStripeStatus('pending')
     }, [profile])
+
+    // Handle Stripe callback URL params
+    useEffect(() => {
+        const stripeParam = searchParams.get('stripe')
+        const tab = searchParams.get('tab')
+        if (tab === 'billing') setActiveTab('billing')
+        if (stripeParam === 'connected') {
+            setStripeStatus('connected')
+            toast.success('Stripe account connected! You can now receive online payments. ✓')
+        } else if (stripeParam === 'pending') {
+            setStripeStatus('pending')
+            toast('Stripe onboarding incomplete. Please finish setup.', { icon: '⚠️' })
+        }
+    }, [searchParams])
+
+    // Load late fee rules
+    useEffect(() => {
+        async function loadRentSettings() {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const { data } = await supabase
+                .from('late_fee_rules')
+                .select('*')
+                .eq('user_id', user.id)
+                .is('property_id', null)
+                .single()
+            if (data) {
+                setLateFeeRuleId(data.id)
+                setGracePeriod(String(data.grace_period_days ?? 5))
+                setFeeType(data.fee_type ?? 'flat')
+                setFeeAmount(String(data.fee_amount ?? 50))
+            }
+        }
+        loadRentSettings()
+    }, [supabase])
 
     // ── Avatar upload ─────────────────────────────────────────────────────────
     async function handleAvatarSelect(file: File | null) {
@@ -279,6 +334,45 @@ export default function SettingsPage() {
         if (deleteConfirmText !== 'DELETE') { toast.error('Type DELETE to confirm'); return }
         toast('Account deletion requires a server-side function — contact support.', { icon: '⚠️' })
         setShowDeleteModal(false)
+    }
+
+    // ── Stripe Connect ────────────────────────────────────────────────────────
+    async function connectStripe() {
+        setStripeConnecting(true)
+        const res = await fetch('/api/stripe/connect', { method: 'POST' })
+        const json = await res.json()
+        if (json.url) {
+            window.location.href = json.url
+        } else {
+            toast.error(json.error || 'Failed to start Stripe Connect')
+            setStripeConnecting(false)
+        }
+    }
+
+    // ── Save Rent Settings ────────────────────────────────────────────────────
+    async function saveRentSettings() {
+        if (!feeAmount || Number(feeAmount) < 0) { toast.error('Enter a valid fee amount'); return }
+        setSavingRentSettings(true)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setSavingRentSettings(false); return }
+
+        if (lateFeeRuleId) {
+            await supabase.from('late_fee_rules').update({
+                fee_type: feeType,
+                fee_amount: Number(feeAmount),
+                grace_period_days: Number(gracePeriod),
+            }).eq('id', lateFeeRuleId)
+        } else {
+            const { data } = await supabase.from('late_fee_rules').insert({
+                user_id: user.id,
+                fee_type: feeType,
+                fee_amount: Number(feeAmount),
+                grace_period_days: Number(gracePeriod),
+            }).select('id').single()
+            if (data) setLateFeeRuleId(data.id)
+        }
+        toast.success('Rent settings saved ✓')
+        setSavingRentSettings(false)
     }
 
     // ── Render helpers ────────────────────────────────────────────────────────
@@ -450,47 +544,164 @@ export default function SettingsPage() {
                 const FREE_FEATURES = ['1 property', 'Up to 5 tenants', 'Basic rent tracking', 'Maintenance tickets']
                 const PRO_FEATURES = ['Unlimited properties', 'Unlimited tenants', 'CSV + PDF exports', 'Email reminders', 'Lease document storage']
                 return (
-                    <Card>
-                        <div className="flex items-center gap-3 mb-2">
-                            <SectionTitle>Current Plan</SectionTitle>
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize" style={{ background: isPro ? 'rgba(232,57,42,0.12)' : 'var(--dash-nav-hover)', color: isPro ? '#E8392A' : 'var(--dash-muted)', border: `1px solid ${isPro ? 'rgba(232,57,42,0.3)' : 'var(--dash-border)'}` }}>
-                                {plan.charAt(0).toUpperCase() + plan.slice(1)}
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Free */}
-                            <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--dash-nav-hover)', border: `2px solid ${!isPro ? '#E8392A' : 'var(--dash-border)'}` }}>
-                                <p className="font-bold text-sm" style={{ color: 'var(--dash-text)' }}>Free</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--dash-text)' }}>$0<span className="text-xs font-normal ml-1" style={{ color: 'var(--dash-muted)' }}>/mo</span></p>
-                                <ul className="space-y-1.5">
-                                    {FREE_FEATURES.map(f => (
-                                        <li key={f} className="flex items-center gap-2 text-xs" style={{ color: 'var(--dash-muted)' }}>
-                                            <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#22C55E' }} />{f}
-                                        </li>
-                                    ))}
-                                </ul>
+                    <div className="space-y-5">
+                        {/* ── Plan ── */}
+                        <Card>
+                            <div className="flex items-center gap-3 mb-2">
+                                <SectionTitle>Current Plan</SectionTitle>
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize" style={{ background: isPro ? 'rgba(232,57,42,0.12)' : 'var(--dash-nav-hover)', color: isPro ? '#E8392A' : 'var(--dash-muted)', border: `1px solid ${isPro ? 'rgba(232,57,42,0.3)' : 'var(--dash-border)'}` }}>
+                                    {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                                </span>
                             </div>
-                            {/* Pro */}
-                            <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--dash-nav-hover)', border: `2px solid ${isPro ? '#E8392A' : 'var(--dash-border)'}` }}>
-                                <p className="font-bold text-sm" style={{ color: 'var(--dash-text)' }}>Pro</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--dash-text)' }}>$19<span className="text-xs font-normal ml-1" style={{ color: 'var(--dash-muted)' }}>/mo</span></p>
-                                <ul className="space-y-1.5">
-                                    {PRO_FEATURES.map(f => (
-                                        <li key={f} className="flex items-center gap-2 text-xs" style={{ color: 'var(--dash-muted)' }}>
-                                            <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#E8392A' }} />{f}
-                                        </li>
-                                    ))}
-                                </ul>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--dash-nav-hover)', border: `2px solid ${!isPro ? '#E8392A' : 'var(--dash-border)'}` }}>
+                                    <p className="font-bold text-sm" style={{ color: 'var(--dash-text)' }}>Free</p>
+                                    <p className="text-2xl font-bold" style={{ color: 'var(--dash-text)' }}>$0<span className="text-xs font-normal ml-1" style={{ color: 'var(--dash-muted)' }}>/mo</span></p>
+                                    <ul className="space-y-1.5">
+                                        {FREE_FEATURES.map(f => (
+                                            <li key={f} className="flex items-center gap-2 text-xs" style={{ color: 'var(--dash-muted)' }}>
+                                                <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#22C55E' }} />{f}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--dash-nav-hover)', border: `2px solid ${isPro ? '#E8392A' : 'var(--dash-border)'}` }}>
+                                    <p className="font-bold text-sm" style={{ color: 'var(--dash-text)' }}>Pro</p>
+                                    <p className="text-2xl font-bold" style={{ color: 'var(--dash-text)' }}>$19<span className="text-xs font-normal ml-1" style={{ color: 'var(--dash-muted)' }}>/mo</span></p>
+                                    <ul className="space-y-1.5">
+                                        {PRO_FEATURES.map(f => (
+                                            <li key={f} className="flex items-center gap-2 text-xs" style={{ color: 'var(--dash-muted)' }}>
+                                                <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#E8392A' }} />{f}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
-                        {!isPro && (
-                            <button disabled className="w-full py-3 rounded-xl text-sm font-semibold text-white opacity-60 cursor-not-allowed mt-2" style={{ background: '#E8392A' }}>
-                                Upgrade to Pro — $19/mo (Coming in Phase 9 · Stripe)
-                            </button>
-                        )}
-                    </Card>
+                        </Card>
+
+                        {/* ── Stripe Connect / Receive Online Payments ── */}
+                        <Card>
+                            <SectionTitle>Receive Online Payments</SectionTitle>
+
+                            {stripeStatus === 'connected' ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5" style={{ background: 'rgba(34,197,94,0.1)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.2)' }}>
+                                            <BadgeCheck className="w-4 h-4" /> Bank Account Connected
+                                        </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-sm" style={{ color: 'var(--dash-text)' }}>Rent payments go directly to your connected account</p>
+                                        <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: 'var(--dash-muted)' }}>Powered by Stripe Connect</p>
+                                    </div>
+                                    <div className="flex items-center gap-4 pt-4 mt-4" style={{ borderTop: '1px solid var(--dash-divider)' }}>
+                                        <div className="flex-1">
+                                            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--dash-muted)' }}>Application Fee</p>
+                                            <p className="text-sm font-bold" style={{ color: 'var(--dash-text)' }}>1.5% per transaction</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--dash-muted)' }}>Payout Status</p>
+                                            <p className="text-sm font-bold" style={{ color: '#16A34A' }}>Active</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>
+                                        Connect your bank account to receive rent payments directly from tenants.
+                                        Funds are settled via Stripe Express within 2-3 business days.
+                                    </p>
+                                    <button
+                                        onClick={connectStripe}
+                                        disabled={stripeConnecting}
+                                        className="w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 shadow-lg shadow-purple-500/20"
+                                        style={{ background: 'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)' }}
+                                    >
+                                        {stripeConnecting ? (
+                                            <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Starting setup...</>
+                                        ) : (
+                                            <><Zap className="w-4 h-4" /> Connect with Stripe</>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </Card>
+                    </div>
                 )
             }
+
+            // ── Rent Settings ─────────────────────────────────────────────────
+            case 'rent': return (
+                <Card>
+                    <SectionTitle>Late Fee Configuration</SectionTitle>
+                    <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>Automatically apply late fees to overdue rent payments. Fees are calculated daily via a background job.</p>
+
+                    <div className="space-y-4 pt-1">
+                        <div>
+                            <label className={LABEL} style={labelStyle}>
+                                <Clock className="inline w-3 h-3 mr-1" style={{ color: 'var(--dash-muted)' }} />
+                                Grace Period (days)
+                            </label>
+                            <input
+                                type="number"
+                                value={gracePeriod}
+                                onChange={e => setGracePeriod(e.target.value)}
+                                min="0"
+                                max="30"
+                                className={`${INPUT} ${focusClass}`}
+                                style={inputStyle}
+                                placeholder="5"
+                            />
+                            <p className="text-xs mt-1" style={{ color: 'var(--dash-muted)' }}>Late fee applies this many days after the due date.</p>
+                        </div>
+
+                        <div>
+                            <label className={LABEL} style={labelStyle}>Fee Type</label>
+                            <div className="relative">
+                                <select
+                                    value={feeType}
+                                    onChange={e => setFeeType(e.target.value)}
+                                    className={`${INPUT} ${focusClass} appearance-none pr-10`}
+                                    style={inputStyle}
+                                >
+                                    <option value="flat">Flat amount ($)</option>
+                                    <option value="percentage">Percentage (%) of rent</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4" style={{ color: 'var(--dash-muted)' }} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className={LABEL} style={labelStyle}>
+                                {feeType === 'flat' ? 'Late Fee Amount ($)' : 'Late Fee Percentage (%)'}
+                            </label>
+                            <input
+                                type="number"
+                                value={feeAmount}
+                                onChange={e => setFeeAmount(e.target.value)}
+                                min="0"
+                                step={feeType === 'percentage' ? '0.1' : '1'}
+                                className={`${INPUT} ${focusClass}`}
+                                style={inputStyle}
+                                placeholder={feeType === 'flat' ? '50' : '5'}
+                            />
+                            {feeType === 'flat' && (
+                                <p className="text-xs mt-1" style={{ color: 'var(--dash-muted)' }}>A flat ${feeAmount || '50'} fee will be added to overdue payments after {gracePeriod || '5'} days.</p>
+                            )}
+                            {feeType === 'percentage' && (
+                                <p className="text-xs mt-1" style={{ color: 'var(--dash-muted)' }}>{feeAmount || '5'}% of the rent amount will be added after {gracePeriod || '5'} days.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl p-4" style={{ background: 'rgba(232,57,42,0.06)', border: '1px solid rgba(232,57,42,0.15)' }}>
+                        <p className="text-xs font-semibold mb-1" style={{ color: '#E8392A' }}>How it works</p>
+                        <p className="text-xs" style={{ color: 'var(--dash-muted)' }}>The late fee cron runs daily at 10am UTC. It checks all unpaid payments past the grace period and applies the fee. Tenants will see the updated total when they go to pay online.</p>
+                    </div>
+
+                    <SaveButton loading={savingRentSettings} onClick={saveRentSettings}>Save Rent Settings</SaveButton>
+                </Card>
+            )
 
             // ── Danger Zone ───────────────────────────────────────────────────
             case 'danger': return (
@@ -574,5 +785,13 @@ export default function SettingsPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function SettingsPage() {
+    return (
+        <Suspense fallback={<div className="w-full max-w-5xl mx-auto px-6 py-6"><div className="h-8 w-48 rounded-xl animate-pulse" style={{ background: 'var(--dash-nav-hover)' }} /></div>}>
+            <SettingsPageInner />
+        </Suspense>
     )
 }

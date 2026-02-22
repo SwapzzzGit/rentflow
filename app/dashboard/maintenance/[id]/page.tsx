@@ -358,6 +358,89 @@ export default function MaintenanceDetailPage() {
                 </div>
             )}
 
+            {/* ── Tenant Photos ── */}
+            <TenantPhotosCard ticketId={id} />
+
         </div>
     )
 }
+
+// ─── Tenant Photos Card (separate component to avoid extra state in parent) ──
+function TenantPhotosCard({ ticketId }: { ticketId: string }) {
+    const supabase = createClient()
+    const [signedUrls, setSignedUrls] = useState<string[]>([])
+    const [lightbox, setLightbox] = useState<string | null>(null)
+    const [loaded, setLoaded] = useState(false)
+
+    useEffect(() => {
+        async function loadPhotos() {
+            const { data } = await supabase
+                .from('maintenance_tickets')
+                .select('tenant_photos')
+                .eq('id', ticketId)
+                .single()
+
+            const paths: string[] = (data?.tenant_photos as string[] | null) ?? []
+            if (paths.length === 0) { setLoaded(true); return }
+
+            const urls: string[] = []
+            for (const path of paths) {
+                if (path.startsWith('http')) {
+                    urls.push(path)
+                } else {
+                    const { data: signed } = await supabase.storage.from('receipts').createSignedUrl(path, 3600)
+                    if (signed?.signedUrl) urls.push(signed.signedUrl)
+                }
+            }
+            setSignedUrls(urls)
+            setLoaded(true)
+        }
+        loadPhotos()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ticketId])
+
+    if (!loaded || signedUrls.length === 0) return null
+
+    return (
+        <>
+            <div className="w-full rounded-2xl p-6" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)' }}>
+                <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--dash-text)' }}>
+                    Tenant Photos ({signedUrls.length})
+                </h2>
+                <div className="grid grid-cols-3 gap-3">
+                    {signedUrls.map((url, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => setLightbox(url)}
+                            className="aspect-square rounded-xl overflow-hidden hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                            style={{ border: '1px solid var(--dash-border)' }}
+                        >
+                            <img src={url} alt={`Tenant photo ${idx + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Lightbox */}
+            {lightbox && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)' }}
+                    onClick={() => setLightbox(null)}
+                >
+                    <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+                        <img src={lightbox} alt="Tenant photo" className="w-full rounded-2xl object-contain max-h-[80vh]" />
+                        <button
+                            onClick={() => setLightbox(null)}
+                            className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center"
+                            style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    )
+}
+

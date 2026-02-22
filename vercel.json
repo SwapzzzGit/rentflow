@@ -1,0 +1,16 @@
+{
+    "crons": [
+        {
+            "path": "/api/cron/rent-reminders",
+            "schedule": "0 9 * * *"
+        },
+        {
+            "path": "/api/cron/lease-expiry",
+            "schedule": "0 9 * * *"
+        },
+        {
+            "path": "/api/stripe/late-fees",
+            "schedule": "0 10 * * *"
+        }
+    ]
+}
