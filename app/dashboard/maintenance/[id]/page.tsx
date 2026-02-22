@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Upload, Camera, CheckCircle, X } from 'lucide-react'
+import { ArrowLeft, Upload, Camera, CheckCircle, X, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StatusBadge } from '@/components/ui/status-badge'
 import toast from 'react-hot-toast'
@@ -43,7 +43,11 @@ export default function MaintenanceDetailPage() {
 
     const fetchTicket = useCallback(async () => {
         setLoading(true)
-        const { data, error } = await supabase.from('maintenance_tickets').select('*, property:properties(name, currency), tenant:tenants(full_name)').eq('id', id).single()
+        const { data, error } = await supabase
+            .from('maintenance_tickets')
+            .select('*, property:properties(name, currency), tenant:tenants(full_name)')
+            .eq('id', id)
+            .single()
         if (error || !data) { setLoading(false); return }
         const t = data as Ticket
         setTicket(t)
@@ -61,7 +65,10 @@ export default function MaintenanceDetailPage() {
     async function updateStatus(status: string) {
         if (!ticket) return
         setUpdatingStatus(true)
-        const { error } = await supabase.from('maintenance_tickets').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
+        const { error } = await supabase
+            .from('maintenance_tickets')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', id)
         if (error) { toast.error(error.message); setUpdatingStatus(false); return }
         toast.success(`Status updated to ${status}`)
         setTicket(t => t ? { ...t, status } : null)
@@ -71,8 +78,8 @@ export default function MaintenanceDetailPage() {
     function handleFileSelect(file: File | null) {
         if (!file) return
         setReceiptFile(file)
-        const url = URL.createObjectURL(file)
-        setReceiptPreview(url)
+        // Use object URL for local preview only — real signed URL set after upload
+        setReceiptPreview(URL.createObjectURL(file))
     }
 
     function getCostPercents(): { landlord: number; tenant: number } {
@@ -95,14 +102,21 @@ export default function MaintenanceDetailPage() {
 
         let receiptUrl = ticket?.receipt_url || null
 
-        // Upload file if new one selected
+        // Upload new file if selected
         if (receiptFile) {
             const ext = receiptFile.name.split('.').pop()
-            const path = `${user.id}/maintenance/${id}/${Date.now()}-receipt.${ext}`
-            const { error: uploadError } = await supabase.storage.from('receipts').upload(path, receiptFile, { upsert: true })
+            const uploadPath = `${user.id}/maintenance/${id}/${Date.now()}-receipt.${ext}`
+            const { error: uploadError } = await supabase.storage
+                .from('receipts')
+                .upload(uploadPath, receiptFile, { upsert: true })
             if (uploadError) { toast.error('Failed to upload receipt: ' + uploadError.message); setSavingReceipt(false); return }
-            const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path)
-            receiptUrl = urlData.publicUrl
+
+            // Use signed URL so private bucket renders correctly
+            const { data: signed } = await supabase.storage
+                .from('receipts')
+                .createSignedUrl(uploadPath, 3600)
+            receiptUrl = signed?.signedUrl || null
+            if (receiptUrl) setReceiptPreview(receiptUrl)
         }
 
         const { landlord, tenant: tenantP } = getCostPercents()
@@ -111,33 +125,43 @@ export default function MaintenanceDetailPage() {
         const { error: tkError } = await supabase.from('maintenance_tickets').update({
             receipt_url: receiptUrl, receipt_amount: parseFloat(receiptAmount),
             receipt_category: receiptCategory, cost_bearer: costBearer,
-            landlord_percent: landlord, tenant_percent: tenantP, updated_at: new Date().toISOString(),
+            landlord_percent: landlord, tenant_percent: tenantP,
+            updated_at: new Date().toISOString(),
         }).eq('id', id)
 
         if (tkError) { toast.error(tkError.message); setSavingReceipt(false); return }
 
-        // Get property_id for the expense
-        const { data: tkData } = await supabase.from('maintenance_tickets').select('property_id').eq('id', id).single()
-        const propertyId = tkData?.property_id || null
+        // Get property_id for the expense entry
+        const { data: tkData } = await supabase
+            .from('maintenance_tickets')
+            .select('property_id')
+            .eq('id', id)
+            .single()
 
         const expensePayload = {
-            user_id: user.id, property_id: propertyId, maintenance_ticket_id: id,
-            title: ticket?.title || 'Maintenance', amount: parseFloat(receiptAmount),
-            category: receiptCategory.toLowerCase(), receipt_url: receiptUrl,
+            user_id: user.id,
+            property_id: tkData?.property_id || null,
+            maintenance_ticket_id: id,
+            title: ticket?.title || 'Maintenance',
+            amount: parseFloat(receiptAmount),
+            category: receiptCategory.toLowerCase(),
+            receipt_url: receiptUrl,
             date: new Date().toISOString().split('T')[0],
             notes: `Cost bearer: ${costBearer}. Landlord: ${landlord}%, Tenant: ${tenantP}%`,
         }
 
-        // Check if expense already linked to this ticket
-        const { data: existingExp } = await supabase.from('expenses').select('id').eq('maintenance_ticket_id', id).maybeSingle()
+        // Check if an expense already exists for this ticket
+        const { data: existingExp } = await supabase
+            .from('expenses')
+            .select('id')
+            .eq('maintenance_ticket_id', id)
+            .maybeSingle()
 
         let expError
         if (existingExp?.id) {
-            // Update existing linked expense
             const { error } = await supabase.from('expenses').update(expensePayload).eq('id', existingExp.id)
             expError = error
         } else {
-            // Insert new expense
             const { error } = await supabase.from('expenses').insert([expensePayload])
             expError = error
         }
@@ -149,17 +173,38 @@ export default function MaintenanceDetailPage() {
         fetchTicket()
     }
 
-    const inputStyle = { background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)', color: 'var(--dash-text)' }
+    const inputStyle = {
+        background: 'var(--dash-nav-hover)',
+        border: '1px solid var(--dash-border)',
+        color: 'var(--dash-text)',
+    }
 
-    if (loading) return <div className="p-8 w-full"><div className="h-8 w-48 rounded-lg animate-pulse mb-6" style={{ background: 'var(--dash-card-bg)' }} /><div className="h-60 rounded-2xl animate-pulse" style={{ background: 'var(--dash-card-bg)' }} /></div>
+    if (loading) return (
+        <div className="p-8 w-full">
+            <div className="h-8 w-48 rounded-lg animate-pulse mb-6" style={{ background: 'var(--dash-card-bg)' }} />
+            <div className="h-60 rounded-2xl animate-pulse" style={{ background: 'var(--dash-card-bg)' }} />
+        </div>
+    )
 
-    if (!ticket) return <div className="p-8 w-full text-center py-16 text-sm" style={{ color: 'var(--dash-muted)' }}>Ticket not found. <button className="underline" onClick={() => router.push('/dashboard/maintenance')}>Go back</button></div>
+    if (!ticket) return (
+        <div className="p-8 w-full text-center py-16 text-sm" style={{ color: 'var(--dash-muted)' }}>
+            Ticket not found. <button className="underline" onClick={() => router.push('/dashboard/maintenance')}>Go back</button>
+        </div>
+    )
 
-    const card = (children: React.ReactNode) => <div className="rounded-2xl p-6 mb-6" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)' }}>{children}</div>
+    const card = (children: React.ReactNode) => (
+        <div className="rounded-2xl p-6 mb-6 w-full" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)' }}>
+            {children}
+        </div>
+    )
 
     return (
         <div className="p-8 w-full max-w-3xl">
-            <button onClick={() => router.push('/dashboard/maintenance')} className="flex items-center gap-2 text-sm mb-6 hover:opacity-80" style={{ color: 'var(--dash-muted)' }}>
+            <button
+                onClick={() => router.push('/dashboard/maintenance')}
+                className="flex items-center gap-2 text-sm mb-6 hover:opacity-80"
+                style={{ color: 'var(--dash-muted)' }}
+            >
                 <ArrowLeft className="w-4 h-4" /> Back to Maintenance
             </button>
 
@@ -195,27 +240,38 @@ export default function MaintenanceDetailPage() {
                 </>
             )}
 
-            {/* Status Stepper */}
+            {/* ── Status Stepper ── */}
             {card(
                 <>
-                    <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--dash-text)' }}>Update Status</h2>
-                    <div className="flex items-center gap-0">
+                    <h2 className="text-sm font-semibold mb-5" style={{ color: 'var(--dash-text)' }}>Update Status</h2>
+                    <div className="flex items-center w-full">
                         {STEPS.map((step, i) => {
                             const active = ticket.status === step
                             const done = STEPS.indexOf(ticket.status) > i
                             return (
                                 <div key={step} className="flex items-center flex-1">
-                                    <div className="flex flex-col items-center flex-1">
+                                    {/* Circle + label */}
+                                    <div className="flex flex-col items-center">
                                         <button
                                             onClick={() => !updatingStatus && updateStatus(step)}
-                                            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 hover:scale-110"
-                                            style={{ background: active ? '#E8392A' : done ? '#22C55E22' : 'var(--dash-nav-hover)', borderColor: active ? '#E8392A' : done ? '#22C55E' : 'var(--dash-border)', color: active ? '#fff' : done ? '#22C55E' : 'var(--dash-muted)' }}
+                                            className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all border-2 hover:scale-110"
+                                            style={{
+                                                background: active ? '#E8392A' : done ? 'rgba(34,197,94,0.15)' : 'var(--dash-nav-hover)',
+                                                borderColor: active ? '#E8392A' : done ? '#22C55E' : 'var(--dash-border)',
+                                                color: active ? '#fff' : done ? '#22C55E' : 'var(--dash-muted)',
+                                            }}
                                         >
                                             {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
                                         </button>
-                                        <p className="text-xs mt-2 capitalize text-center" style={{ color: active ? 'var(--dash-text)' : 'var(--dash-muted)' }}>{step}</p>
+                                        <p className="text-xs mt-2 capitalize whitespace-nowrap" style={{ color: active ? 'var(--dash-text)' : 'var(--dash-muted)' }}>{step}</p>
                                     </div>
-                                    {i < STEPS.length - 1 && <div className="flex-1 h-0.5 mb-5 -mx-1" style={{ background: STEPS.indexOf(ticket.status) > i ? '#22C55E' : 'var(--dash-border)' }} />}
+                                    {/* Connector line — only between steps */}
+                                    {i < STEPS.length - 1 && (
+                                        <div
+                                            className="flex-1 h-px mx-2 mb-5"
+                                            style={{ background: STEPS.indexOf(ticket.status) > i ? '#22C55E' : 'var(--dash-border)' }}
+                                        />
+                                    )}
                                 </div>
                             )
                         })}
@@ -223,21 +279,29 @@ export default function MaintenanceDetailPage() {
                 </>
             )}
 
-            {/* Receipt Section */}
+            {/* ── Bill / Receipt ── */}
             {card(
                 <>
                     <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--dash-text)' }}>Bill / Receipt</h2>
 
-                    {/* Upload area */}
+                    {/* Upload area / Preview */}
                     {!receiptPreview ? (
-                        <div className="rounded-xl border-2 border-dashed p-8 text-center mb-5" style={{ borderColor: 'var(--dash-border)' }}>
+                        <div className="rounded-xl border-2 border-dashed p-8 text-center mb-5 w-full" style={{ borderColor: 'var(--dash-border)' }}>
                             <Upload className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--dash-muted)' }} />
                             <p className="text-sm mb-4" style={{ color: 'var(--dash-muted)' }}>Upload receipt photo or PDF</p>
                             <div className="flex justify-center gap-3">
-                                <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors" style={{ color: 'var(--dash-text)', background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}>
+                                <button
+                                    onClick={() => fileRef.current?.click()}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                    style={{ color: 'var(--dash-text)', background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}
+                                >
                                     <Upload className="w-3.5 h-3.5" /> Choose File
                                 </button>
-                                <button onClick={() => cameraRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors" style={{ color: 'var(--dash-text)', background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}>
+                                <button
+                                    onClick={() => cameraRef.current?.click()}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                    style={{ color: 'var(--dash-text)', background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}
+                                >
                                     <Camera className="w-3.5 h-3.5" /> Take Photo
                                 </button>
                             </div>
@@ -245,9 +309,10 @@ export default function MaintenanceDetailPage() {
                             <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFileSelect(e.target.files?.[0] || null)} />
                         </div>
                     ) : (
-                        <div className="relative mb-5 rounded-xl overflow-hidden" style={{ border: '1px solid var(--dash-border)' }}>
+                        // ── Receipt preview ──
+                        <div className="relative w-full h-48 rounded-xl overflow-hidden mb-5" style={{ background: 'var(--dash-nav-hover)', border: '1px solid var(--dash-border)' }}>
                             {receiptFile?.type === 'application/pdf' || (!receiptFile && receiptPreview?.includes('.pdf')) ? (
-                                <div className="p-4 flex items-center gap-3">
+                                <div className="flex items-center justify-center h-full gap-3">
                                     <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(232,57,42,0.1)' }}>
                                         <Upload className="w-5 h-5" style={{ color: '#E8392A' }} />
                                     </div>
@@ -257,72 +322,110 @@ export default function MaintenanceDetailPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <img src={receiptPreview} alt="Receipt" className="w-full max-h-48 object-contain" />
+                                <img src={receiptPreview} alt="Receipt" className="w-full h-full object-cover" />
                             )}
-                            <button onClick={() => { setReceiptFile(null); setReceiptPreview(null) }} className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}>
+                            <button
+                                onClick={() => { setReceiptFile(null); setReceiptPreview(null) }}
+                                className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-lg"
+                                style={{ background: 'rgba(0,0,0,0.65)', color: '#fff' }}
+                            >
                                 <X className="w-3.5 h-3.5" />
                             </button>
                         </div>
                     )}
 
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Total Amount *</label>
-                                <input type="number" placeholder="0.00" value={receiptAmount} onChange={e => setReceiptAmount(e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Expense Category</label>
-                                <select className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} value={receiptCategory} onChange={e => setReceiptCategory(e.target.value)}>
+                    {/* Amount + Category */}
+                    <div className="grid grid-cols-2 gap-4 w-full mb-4">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Total Amount *</label>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                value={receiptAmount}
+                                onChange={e => setReceiptAmount(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                                style={inputStyle}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Expense Category</label>
+                            {/* Custom styled select */}
+                            <div className="relative w-full">
+                                <select
+                                    value={receiptCategory}
+                                    onChange={e => setReceiptCategory(e.target.value)}
+                                    className="w-full appearance-none px-4 py-2.5 pr-10 rounded-xl text-sm outline-none"
+                                    style={inputStyle}
+                                >
                                     {EXPENSE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                                 </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4" style={{ color: 'var(--dash-muted)' }} />
                             </div>
                         </div>
-
-                        {/* Cost bearer */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Who bears this cost?</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { value: 'landlord', label: 'Landlord (100%)' }, { value: 'tenant', label: 'Tenant (100%)' },
-                                    { value: 'split_50', label: 'Split 50 / 50' }, { value: 'custom', label: 'Custom split' },
-                                ].map(opt => (
-                                    <button key={opt.value} onClick={() => setCostBearer(opt.value as any)} className="px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all" style={{ background: costBearer === opt.value ? 'rgba(232,57,42,0.12)' : 'var(--dash-nav-hover)', border: `1px solid ${costBearer === opt.value ? '#E8392A' : 'var(--dash-border)'}`, color: costBearer === opt.value ? '#E8392A' : 'var(--dash-text)' }}>
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Custom split inputs */}
-                        {costBearer === 'custom' && (
-                            <div className="grid grid-cols-2 gap-4">
-                                {[['Landlord %', landlordPct, setLandlordPct], ['Tenant %', tenantPct, setTenantPct]].map(([label, val, setter]: any) => (
-                                    <div key={label as string} className="space-y-1.5">
-                                        <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>{label}</label>
-                                        <input type="number" min="0" max="100" value={val} onChange={e => setter(e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <button onClick={saveReceipt} disabled={savingReceipt} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50" style={{ background: '#E8392A' }}>
-                            {savingReceipt ? 'Saving...' : 'Save Receipt & Add to Expenses'}
-                        </button>
                     </div>
+
+                    {/* Cost bearer */}
+                    <div className="space-y-2 mb-4">
+                        <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Who bears this cost?</label>
+                        <div className="grid grid-cols-2 gap-3 w-full">
+                            {[
+                                { value: 'landlord', label: 'Landlord (100%)' },
+                                { value: 'tenant', label: 'Tenant (100%)' },
+                                { value: 'split_50', label: 'Split 50 / 50' },
+                                { value: 'custom', label: 'Custom split' },
+                            ].map(opt => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => setCostBearer(opt.value as any)}
+                                    className="px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all"
+                                    style={{
+                                        background: costBearer === opt.value ? 'rgba(232,57,42,0.12)' : 'var(--dash-nav-hover)',
+                                        border: `1px solid ${costBearer === opt.value ? '#E8392A' : 'var(--dash-border)'}`,
+                                        color: costBearer === opt.value ? '#E8392A' : 'var(--dash-text)',
+                                    }}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Custom split inputs */}
+                    {costBearer === 'custom' && (
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            {[['Landlord %', landlordPct, setLandlordPct], ['Tenant %', tenantPct, setTenantPct]].map(([label, val, setter]: any) => (
+                                <div key={label as string} className="space-y-1.5">
+                                    <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>{label}</label>
+                                    <input type="number" min="0" max="100" value={val} onChange={e => setter(e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={saveReceipt}
+                        disabled={savingReceipt}
+                        className="w-full py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        style={{ background: '#E8392A' }}
+                    >
+                        {savingReceipt ? 'Saving...' : 'Save Receipt & Add to Expenses'}
+                    </button>
                 </>
             )}
 
-            {/* Linked expense */}
+            {/* Linked expense confirmation */}
             {ticket.receipt_amount && (
                 <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
                     <div>
                         <p className="text-xs font-semibold" style={{ color: '#22C55E' }}>Linked Expense</p>
                         <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--dash-text)' }}>
-                            ${Number(ticket.receipt_amount).toLocaleString()} — {ticket.receipt_category} — {ticket.cost_bearer === 'landlord' ? 'Landlord 100%' : ticket.cost_bearer === 'tenant' ? 'Tenant 100%' : `${ticket.landlord_percent}% / ${ticket.tenant_percent}%`}
+                            ${Number(ticket.receipt_amount).toLocaleString()} — {ticket.receipt_category} —{' '}
+                            {ticket.cost_bearer === 'landlord' ? 'Landlord 100%' : ticket.cost_bearer === 'tenant' ? 'Tenant 100%' : `${ticket.landlord_percent}% / ${ticket.tenant_percent}%`}
                         </p>
                     </div>
-                    <button onClick={() => router.push('/dashboard/expenses')} className="text-xs underline" style={{ color: 'var(--dash-muted)' }}>View Expenses →</button>
+                    <button onClick={() => router.push('/dashboard/expenses')} className="text-xs underline hover:opacity-80" style={{ color: 'var(--dash-muted)' }}>
+                        View Expenses →
+                    </button>
                 </div>
             )}
         </div>
