@@ -245,3 +245,65 @@ export async function sendTenantPortalInvite(params: {
   })
 }
 
+export async function sendLeaseSigningRequest(params: {
+  tenantName: string
+  tenantEmail: string
+  landlordName: string
+  propertyName: string
+  leaseStartDate: string
+  leaseEndDate: string
+  monthlyRent: number
+  signingUrl: string
+}) {
+  const { tenantName, tenantEmail, landlordName, propertyName, signingUrl } = params
+
+  const html = emailWrapper(`
+        <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">Action Required: Sign Your Lease</h2>
+        <p style="margin:0 0 20px;color:#6B7280;font-size:15px;">Hi ${tenantName}, <strong>${landlordName}</strong> has sent a lease agreement for <strong>${propertyName}</strong> that requires your digital signature.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border-radius:12px;padding:20px;margin-bottom:8px;border:1px solid #E9EBF0;">
+          <tr><td><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Property</p><p style="margin:0;font-size:15px;font-weight:600;color:#111;">${propertyName}</p></td></tr>
+          <tr><td style="padding-top:12px;"><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Sent by</p><p style="margin:0;font-size:14px;font-weight:600;color:#111;">${landlordName}</p></td></tr>
+        </table>
+        <p style="margin:16px 0 8px;font-size:13px;color:#6B7280;">Your landlord has already signed this lease. Click below to review the lease details and add your signature to complete the agreement.</p>
+        ${ctaButton('Review & Sign Lease', signingUrl)}
+        <p style="margin:16px 0 0;font-size:12px;color:#9CA3AF;">This link is unique to you. After signing, both parties will receive a copy of the fully executed lease. If you did not expect this email, you can ignore it.</p>
+    `)
+
+  return resend.emails.send({
+    from: FROM,
+    to: tenantEmail,
+    subject: `Action Required: Please sign your lease for ${propertyName}`,
+    html,
+  })
+}
+
+export async function sendSignedLeaseToAll(params: {
+  landlordName: string
+  landlordEmail: string
+  tenantName: string
+  tenantEmail: string
+  propertyName: string
+  signedAt: string
+  pdfUrl: string
+}) {
+  const { landlordName, landlordEmail, tenantName, tenantEmail, propertyName, signedAt, pdfUrl } = params
+
+  const makeHtml = (recipientName: string) => emailWrapper(`
+        <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">Lease Fully Signed ✓</h2>
+        <p style="margin:0 0 20px;color:#6B7280;font-size:15px;">Hi ${recipientName}, the lease agreement for <strong>${propertyName}</strong> has been signed by both parties.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FDF4;border-radius:12px;padding:20px;margin-bottom:8px;border:1px solid #BBF7D0;">
+          <tr><td><p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#16A34A;">Fully Executed</p><p style="margin:0;font-size:15px;font-weight:700;color:#15803D;">${propertyName}</p></td></tr>
+          <tr><td style="padding-top:12px;"><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Landlord</p><p style="margin:0;font-size:14px;font-weight:600;color:#111;">${landlordName}</p></td></tr>
+          <tr><td style="padding-top:8px;"><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Tenant</p><p style="margin:0;font-size:14px;font-weight:600;color:#111;">${tenantName}</p></td></tr>
+          <tr><td style="padding-top:8px;"><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Signed On</p><p style="margin:0;font-size:14px;font-weight:600;color:#111;">${signedAt}</p></td></tr>
+        </table>
+        <p style="margin:16px 0 8px;font-size:13px;color:#6B7280;">A legally binding copy of this signed lease is available for download. Keep this for your records.</p>
+        ${pdfUrl ? ctaButton('Download Signed Lease PDF', pdfUrl) : ''}
+        <p style="margin:16px 0 0;font-size:12px;color:#9CA3AF;">This lease was digitally signed via RentFlow. Electronic signatures are legally binding.</p>
+    `)
+
+  await Promise.all([
+    resend.emails.send({ from: FROM, to: landlordEmail, subject: `Lease Fully Signed — ${propertyName}`, html: makeHtml(landlordName) }),
+    resend.emails.send({ from: FROM, to: tenantEmail, subject: `Lease Fully Signed — ${propertyName}`, html: makeHtml(tenantName) }),
+  ])
+}

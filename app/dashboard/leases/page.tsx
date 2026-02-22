@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, FileText, AlertTriangle } from 'lucide-react'
+import { Plus, FileText, AlertTriangle, Send, CheckCircle2, Clock, PenLine } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { SlidePanel } from '@/components/ui/slide-panel'
@@ -18,7 +18,26 @@ type Lease = {
 type Property = { id: string; name: string }
 type Tenant = { id: string; full_name: string; property_id: string; avatar_color: string }
 
-const defaultForm = { property_id: '', tenant_id: '', start_date: '', end_date: '', rent_amount: '', status: 'active', notes: '' }
+const defaultForm = { property_id: '', tenant_id: '', start_date: '', end_date: '', rent_amount: '', status: 'draft', notes: '' }
+
+function SigningStatusBadge({ status }: { status: string }) {
+    const config: Record<string, { label: string; color: string; bg: string; dot?: boolean }> = {
+        draft: { label: 'Draft', color: '#6B7280', bg: 'rgba(107,114,128,0.1)' },
+        pending_landlord: { label: 'Awaiting You', color: '#D97706', bg: 'rgba(217,119,6,0.1)', dot: true },
+        pending_tenant: { label: 'Awaiting Tenant', color: '#2563EB', bg: 'rgba(37,99,235,0.1)', dot: true },
+        signed: { label: 'Signed', color: '#16A34A', bg: 'rgba(22,163,74,0.1)' },
+        expired: { label: 'Expired', color: '#6B7280', bg: 'rgba(107,114,128,0.1)' },
+        active: { label: 'Active', color: '#16A34A', bg: 'rgba(22,163,74,0.1)' },
+    }
+    const cfg = config[status] || config.draft
+    return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>
+            {cfg.dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.color }} />}
+            {status === 'signed' && <CheckCircle2 className="w-3 h-3" />}
+            {cfg.label}
+        </span>
+    )
+}
 
 export default function LeasesPage() {
     const supabase = createClient()
@@ -31,6 +50,7 @@ export default function LeasesPage() {
     const [form, setForm] = useState(defaultForm)
     const [saving, setSaving] = useState(false)
     const [uploadFile, setUploadFile] = useState<File | null>(null)
+    const [sendingId, setSendingId] = useState<string | null>(null)
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -57,6 +77,26 @@ export default function LeasesPage() {
 
     const propertyTenants = tenants.filter(t => !form.property_id || t.property_id === form.property_id)
 
+    async function handleSendForSigning(leaseId: string, e: React.MouseEvent) {
+        e.stopPropagation()
+        setSendingId(leaseId)
+        try {
+            const res = await fetch('/api/leases/request-signing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leaseId }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error)
+            toast.success('Signing request sent!')
+            fetchData()
+        } catch (err: any) {
+            toast.error(err.message)
+        } finally {
+            setSendingId(null)
+        }
+    }
+
     async function handleSave() {
         if (!form.property_id || !form.tenant_id || !form.start_date || !form.end_date) {
             toast.error('Property, tenant, and lease dates are required'); return
@@ -81,7 +121,7 @@ export default function LeasesPage() {
             user_id: user.id, property_id: form.property_id, tenant_id: form.tenant_id,
             start_date: form.start_date, end_date: form.end_date,
             rent_amount: form.rent_amount ? parseFloat(form.rent_amount) : null,
-            status: form.status, document_url: documentUrl, notes: form.notes || null,
+            status: 'draft', document_url: documentUrl, notes: form.notes || null,
         }])
 
         if (error) { toast.error(error.message); setSaving(false); return }
@@ -151,8 +191,22 @@ export default function LeasesPage() {
                     {leases.map(l => {
                         const days = daysLeft(l.end_date)
                         const isPast = days < 0
+                        const isPendingTenant = l.status === 'pending_tenant'
+                        const isDraft = l.status === 'draft'
                         return (
-                            <div key={l.id} className="rounded-2xl p-5" style={{ background: 'var(--dash-card-bg)', border: `1px solid ${isPast ? 'var(--dash-card-border)' : days < 30 ? 'rgba(232,57,42,0.25)' : days < 60 ? 'rgba(245,158,11,0.25)' : 'var(--dash-card-border)'}` }}>
+                            <div
+                                key={l.id}
+                                className="rounded-2xl p-5 cursor-pointer hover:shadow-md transition-shadow relative"
+                                style={{
+                                    background: 'var(--dash-card-bg)',
+                                    border: `1px solid ${isPendingTenant ? 'rgba(37,99,235,0.25)' : isPast ? 'var(--dash-card-border)' : days < 30 ? 'rgba(232,57,42,0.25)' : days < 60 ? 'rgba(245,158,11,0.25)' : 'var(--dash-card-border)'}`,
+                                }}
+                                onClick={() => router.push(`/dashboard/leases/${l.id}`)}
+                            >
+                                {/* Orange action dot for pending tenant */}
+                                {isPendingTenant && (
+                                    <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full pointer-events-none" style={{ background: '#F59E0B' }} />
+                                )}
                                 <div className="flex items-start gap-4 flex-wrap">
                                     {/* Avatar */}
                                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: (l as any).tenant?.avatar_color || '#E8392A' }}>
@@ -162,7 +216,7 @@ export default function LeasesPage() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap mb-1">
                                             <p className="text-sm font-semibold" style={{ color: 'var(--dash-text)' }}>{(l as any).tenant?.full_name || '—'}</p>
-                                            <StatusBadge status={l.status} />
+                                            <SigningStatusBadge status={l.status} />
                                         </div>
                                         <p className="text-xs mb-2" style={{ color: 'var(--dash-muted)' }}>{(l as any).property?.name || '—'}</p>
                                         <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'var(--dash-muted)' }}>
@@ -171,16 +225,32 @@ export default function LeasesPage() {
                                             {l.rent_amount && <span>Rent: ${Number(l.rent_amount).toLocaleString()}/mo</span>}
                                         </div>
                                     </div>
-                                    {/* Days remaining */}
-                                    <div className="text-right flex-shrink-0">
+                                    {/* Right side */}
+                                    <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
                                         <p className="text-xl font-bold" style={{ color: daysColor(days), fontFamily: 'var(--font-bricolage)' }}>
                                             {isPast ? 'Expired' : `${days}d`}
                                         </p>
                                         <p className="text-xs" style={{ color: 'var(--dash-muted)' }}>{isPast ? `${Math.abs(days)} days ago` : 'remaining'}</p>
-                                        {l.document_url && (
-                                            <a href={l.document_url} target="_blank" rel="noreferrer" className="text-xs underline block mt-1" style={{ color: '#E8392A' }}>
-                                                View Lease
-                                            </a>
+                                        {isDraft && (
+                                            <button
+                                                onClick={(e) => handleSendForSigning(l.id, e)}
+                                                disabled={sendingId === l.id}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                                                style={{ background: '#E8392A' }}
+                                            >
+                                                <Send className="w-3 h-3" />
+                                                {sendingId === l.id ? 'Sending…' : 'Send to Sign'}
+                                            </button>
+                                        )}
+                                        {l.status === 'pending_landlord' && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/leases/${l.id}`) }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold hover:opacity-90"
+                                                style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706', border: '1px solid rgba(217,119,6,0.2)' }}
+                                            >
+                                                <PenLine className="w-3 h-3" />
+                                                Sign Now
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -225,14 +295,6 @@ export default function LeasesPage() {
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Monthly Rent</label>
                             <input className={inputCls} style={inputStyle} type="number" placeholder="0.00" value={form.rent_amount} onChange={e => setForm(f => ({ ...f, rent_amount: e.target.value }))} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--dash-muted)' }}>Status</label>
-                            <CustomSelect
-                                value={form.status}
-                                onChange={v => setForm(f => ({ ...f, status: v }))}
-                                options={[{ value: 'active', label: 'Active' }, { value: 'expired', label: 'Expired' }, { value: 'renewed', label: 'Renewed' }]}
-                            />
                         </div>
                     </div>
                     <div className="space-y-1.5">
