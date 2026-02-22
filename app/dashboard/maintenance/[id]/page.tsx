@@ -218,42 +218,34 @@ export default function MaintenanceDetailPage() {
             {card(
                 <>
                     <h2 className="text-sm font-semibold mb-6" style={{ color: 'var(--dash-text)' }}>Update Status</h2>
-                    {/* Row 1: circles + connectors */}
-                    <div className="flex items-center w-full px-4 mb-2">
+                    <div className="flex items-start w-full px-4">
                         {STEPS.map((step, i) => {
                             const active = ticket.status === step
                             const done = STEPS.indexOf(ticket.status) > i
                             return (
                                 <>
-                                    <button
-                                        key={step}
-                                        onClick={() => !updatingStatus && updateStatus(step)}
-                                        className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all border-2 hover:scale-110"
-                                        style={{
-                                            background: active ? '#E8392A' : done ? 'rgba(34,197,94,0.15)' : 'var(--dash-nav-hover)',
-                                            borderColor: active ? '#E8392A' : done ? '#22C55E' : 'var(--dash-border)',
-                                            color: active ? '#fff' : done ? '#22C55E' : 'var(--dash-muted)',
-                                        }}
-                                    >
-                                        {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
-                                    </button>
+                                    {/* Step: circle + label stacked, centered */}
+                                    <div key={step} className="flex flex-col items-center gap-2 flex-1">
+                                        <button
+                                            onClick={() => !updatingStatus && updateStatus(step)}
+                                            className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all border-2 hover:scale-110"
+                                            style={{
+                                                background: active ? '#E8392A' : done ? 'rgba(34,197,94,0.15)' : 'var(--dash-nav-hover)',
+                                                borderColor: active ? '#E8392A' : done ? '#22C55E' : 'var(--dash-border)',
+                                                color: active ? '#fff' : done ? '#22C55E' : 'var(--dash-muted)',
+                                            }}
+                                        >
+                                            {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
+                                        </button>
+                                        <p className="text-xs capitalize whitespace-nowrap" style={{ color: active ? 'var(--dash-text)' : 'var(--dash-muted)' }}>{step}</p>
+                                    </div>
+                                    {/* Connector: mt-[18px] = half of circle h-9 (36px) to sit level with center */}
                                     {i < STEPS.length - 1 && (
-                                        <div className="flex-1 h-px mx-2" style={{ background: STEPS.indexOf(ticket.status) > i ? '#22C55E' : 'var(--dash-border)' }} />
+                                        <div className="flex-1 h-px mt-[18px] mx-1" style={{ background: STEPS.indexOf(ticket.status) > i ? '#22C55E' : 'var(--dash-border)' }} />
                                     )}
                                 </>
                             )
                         })}
-                    </div>
-                    {/* Row 2: labels aligned under each circle */}
-                    <div className="flex items-start w-full px-4">
-                        {STEPS.map((step, i) => (
-                            <>
-                                <p key={step} className="w-9 text-center text-xs capitalize flex-shrink-0" style={{ color: ticket.status === step ? 'var(--dash-text)' : 'var(--dash-muted)' }}>
-                                    {step}
-                                </p>
-                                {i < STEPS.length - 1 && <div className="flex-1 mx-2" />}
-                            </>
-                        ))}
                     </div>
                 </>
             )}
