@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { ProfileProvider, useProfile } from '@/hooks/useProfile'
-import { getTheme, applyTheme, toggleTheme as themeToggle, Theme } from '@/lib/theme'
+import { getTheme, applyTheme, toggleTheme as themeToggle, Theme, getEffectiveTheme } from '@/lib/theme'
 import {
     LayoutDashboard,
     Building2,
@@ -327,11 +327,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 function MobileProfileDrawer({ profile, email, onLogout, theme, onToggleTheme }: { profile: any, email: string, onLogout: () => void, theme: Theme, onToggleTheme: () => void }) {
     const [isOpen, setIsOpen] = useState(false)
     const router = useRouter()
+    const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light')
 
     useEffect(() => {
         (window as any).toggleMobileProfile = () => setIsOpen(true)
+        setEffectiveTheme(getEffectiveTheme())
         return () => { delete (window as any).toggleMobileProfile }
-    }, [])
+    }, [isOpen, theme])
 
     if (!isOpen) return null
 
@@ -341,7 +343,7 @@ function MobileProfileDrawer({ profile, email, onLogout, theme, onToggleTheme }:
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
 
             {/* Drawer */}
-            <div className="absolute inset-x-0 bottom-0 bg-white dark:bg-[#0D0D0D] rounded-t-[32px] border-t border-gray-200 dark:border-white/5 p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
+            <div className="absolute inset-x-0 bottom-0 bg-white dark:bg-[#080808] rounded-t-[32px] border-t border-gray-200 dark:border-white/5 p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
                 <div className="w-12 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full mx-auto mb-8" />
 
                 <div className="flex items-center gap-4 mb-8">
@@ -361,20 +363,20 @@ function MobileProfileDrawer({ profile, email, onLogout, theme, onToggleTheme }:
                 </div>
 
                 <div className="space-y-3">
-                    {/* Theme Toggle (Mobile) - Redesigned to match screenshot */}
+                    {/* Theme Toggle (Mobile) - strictly 2-way Light/Dark */}
                     <button
                         onClick={onToggleTheme}
                         className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/10 transition-all font-semibold"
                     >
                         <div className="flex items-center gap-4">
-                            {theme === 'dark' ? <Moon className="w-5 h-5 text-gray-400 dark:text-gray-500" /> : <Sun className="w-5 h-5 text-gray-400 dark:text-gray-500" />}
-                            <span className="text-gray-600 dark:text-gray-300"><span className="capitalize">{theme}</span> Mode</span>
+                            {effectiveTheme === 'dark' ? <Moon className="w-5 h-5 text-gray-400 dark:text-gray-500" /> : <Sun className="w-5 h-5 text-gray-400 dark:text-gray-500" />}
+                            <span className="text-gray-600 dark:text-gray-300 capitalize">{effectiveTheme} Mode</span>
                         </div>
                         <div
-                            className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${theme === 'dark' ? 'bg-[#E8392A]' : 'bg-gray-300 dark:bg-zinc-700'}`}
+                            className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${effectiveTheme === 'dark' ? 'bg-[#E8392A]' : 'bg-gray-300 dark:bg-zinc-700'}`}
                         >
                             <div
-                                className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200 ${theme === 'dark' ? 'translate-x-[22px]' : 'translate-x-[2px]'}`}
+                                className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200 ${effectiveTheme === 'dark' ? 'translate-x-[22px]' : 'translate-x-[2px]'}`}
                             />
                         </div>
                     </button>

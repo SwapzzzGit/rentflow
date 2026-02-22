@@ -48,24 +48,12 @@ export function MobileBottomNav() {
     return (
         <>
             <nav
-                className="md:hidden fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-around px-2 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.1)] dark:shadow-[0_-8px_30px_rgb(0,0,0,0.5)]"
+                className="md:hidden fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-around px-2 pb-safe bg-white/80 dark:bg-[#0A0A0A]/80 border-t border-gray-100 dark:border-white/5 backdrop-blur-2xl transition-colors duration-200"
                 style={{
-                    background: 'var(--mobile-nav-bg, rgba(255, 255, 255, 0.85))',
-                    borderTop: '1px solid var(--dash-border)',
-                    backdropFilter: 'blur(24px)',
                     paddingTop: '10px',
                     paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
                 }}
             >
-                {/* CSS variables for mobile nav background if not using tailwind exclusively for backdrop blur + transparency */}
-                <style jsx>{`
-                    nav {
-                        background: rgba(255, 255, 255, 0.85);
-                    }
-                    :global(.dark) nav {
-                        background: rgba(10, 10, 10, 0.85);
-                    }
-                `}</style>
 
                 {mainNav.map(({ label, icon: Icon, route }) => {
                     const active = isActive(route)

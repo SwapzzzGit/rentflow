@@ -5,15 +5,25 @@ export function getTheme(): Theme {
     return (localStorage.getItem('theme') as Theme) || 'system'
 }
 
+/**
+ * Returns the effective mode ('light' or 'dark') regardless of if the setting is 'system'
+ */
+export function getEffectiveTheme(): 'light' | 'dark' {
+    if (typeof window === 'undefined') return 'light'
+    const theme = getTheme()
+    if (theme === 'system') {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return theme as 'light' | 'dark'
+}
+
 export function applyTheme(theme: Theme) {
     if (typeof window === 'undefined') return
 
     const root = document.documentElement
-    let resolvedTheme = theme
-
-    if (theme === 'system') {
-        resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
+    const resolvedTheme = theme === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : theme
 
     if (resolvedTheme === 'dark') {
         root.classList.add('dark')
@@ -26,13 +36,21 @@ export function applyTheme(theme: Theme) {
     localStorage.setItem('theme', theme)
 }
 
+export function setTheme(theme: Theme) {
+    applyTheme(theme)
+}
+
 export function toggleTheme(): Theme {
     const current = getTheme()
-    // 3-way toggle: system -> light -> dark -> system
     let next: Theme = 'light'
-    if (current === 'light') next = 'dark'
-    else if (current === 'dark') next = 'system'
-    else next = 'light'
+
+    // If currently 'system', we resolve to the opposite of the effective theme
+    if (current === 'system') {
+        const effective = getEffectiveTheme()
+        next = effective === 'light' ? 'dark' : 'light'
+    } else {
+        next = current === 'light' ? 'dark' : 'light'
+    }
 
     applyTheme(next)
     return next

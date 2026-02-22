@@ -116,6 +116,10 @@ function SettingsPageInner() {
     const [timezone, setTimezone] = useState('UTC')
     const [dateFormat, setDateFormat] = useState('MM/DD/YYYY')
     const [appTheme, setAppTheme] = useState<Theme>('system')
+
+    useEffect(() => {
+        setAppTheme(getTheme())
+    }, [])
     const [savingPrefs, setSavingPrefs] = useState(false)
 
     // Notifications
@@ -457,7 +461,7 @@ function SettingsPageInner() {
                 <Card>
                     <SectionTitle>Display Preferences</SectionTitle>
                     <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>These settings affect how dates, currencies, and times are displayed across the app.</p>
-                    <CustomSelect label="App Theme" value={appTheme} onChange={(v: any) => setAppTheme(v)} options={['light', 'dark', 'system']} />
+                    <CustomSelect label="App Theme" value={appTheme} onChange={(v: any) => setAppTheme(v)} options={['Light', 'Dark', 'System']} />
                     <CustomSelect label="Currency" value={currency} onChange={setCurrency} options={['USD — US Dollar', 'EUR — Euro', 'GBP — British Pound', 'AUD — Australian Dollar', 'CAD — Canadian Dollar', 'INR — Indian Rupee', 'AED — UAE Dirham']} />
                     <CustomSelect label="Timezone" value={timezone} onChange={setTimezone} options={['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'Asia/Dubai', 'Australia/Sydney']} />
                     <CustomSelect label="Date Format" value={dateFormat} onChange={setDateFormat} options={['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']} />
