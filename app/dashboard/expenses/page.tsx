@@ -77,6 +77,15 @@ export default function ExpensesPage() {
         setSaving(false); setPanelOpen(false); setForm(defaultForm); fetchData()
     }
 
+    async function openReceipt(receiptPath: string) {
+        const { data, error } = await supabase.storage.from('receipts').createSignedUrl(receiptPath, 3600)
+        if (data?.signedUrl) {
+            window.open(data.signedUrl, '_blank')
+        } else {
+            toast.error('Could not load receipt')
+        }
+    }
+
     async function exportPDF() {
         const { default: jsPDF } = await import('jspdf')
         const { default: autoTable } = await import('jspdf-autotable')
@@ -189,7 +198,7 @@ export default function ExpensesPage() {
                                 {/* Amount */}
                                 <p className="text-sm font-bold w-20 text-right" style={{ color: 'var(--dash-text)' }}>${Number(e.amount).toLocaleString()}</p>
                                 {/* Receipt */}
-                                {e.receipt_url && <a href={e.receipt_url} target="_blank" rel="noreferrer" className="text-xs underline flex-shrink-0 hidden lg:block" style={{ color: '#E8392A' }}>Receipt</a>}
+                                {e.receipt_url && <button onClick={() => openReceipt(e.receipt_url!)} className="text-xs font-medium underline flex-shrink-0 hidden lg:block hover:opacity-70 transition-opacity" style={{ color: '#E8392A' }}>Receipt</button>}
                             </div>
                         )
                     })}
