@@ -1,7 +1,6 @@
 [build]
-  command = "npm run build"
+  command = "pnpm install --no-frozen-lockfile && npm run build"
   publish = ".next"
-  install_command = "pnpm install --no-frozen-lockfile"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
