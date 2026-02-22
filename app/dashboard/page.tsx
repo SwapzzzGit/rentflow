@@ -65,7 +65,7 @@ const maintenanceDotBg: Record<string, string> = {
 
 export default function DashboardPage() {
     return (
-        <div className="p-8 w-full max-w-[1200px]" style={{ transition: 'background-color 200ms ease' }}>
+        <div className="p-8 w-full" style={{ transition: 'background-color 200ms ease' }}>
 
             {/* Header */}
             <div className="mb-8">
@@ -78,7 +78,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full mb-6">
                 {statCards.map((card) => {
                     const Icon = card.icon
                     return (
@@ -154,7 +154,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Bottom: Expenses + Maintenance */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
 
                 {/* Recent Expenses */}
                 <div
