@@ -62,7 +62,7 @@ export default function DashboardPage() {
 
         const rents = (rentRows || []) as RentRow[]
         const exps = (expenses || []) as Expense[]
-        const tks = (tickets || []) as MainticketRow[]
+        const tks = (tickets || []) as unknown as MainticketRow[]
 
         const total = rents.reduce((s, r) => s + Number(r.amount), 0)
         const collected = rents.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount), 0)

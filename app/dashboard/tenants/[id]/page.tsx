@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Edit2, DollarSign, Calendar, Home, Wrench } from 'lucide-react'
+import { ArrowLeft, Edit2, DollarSign, Calendar, Home, Wrench, Mail, CheckCircle, Clock, Shield } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StatusBadge } from '@/components/ui/status-badge'
 import toast from 'react-hot-toast'
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 type Tenant = {
     id: string; full_name: string; email: string; phone: string; property_id: string
     rent_amount: number | null; lease_start: string; lease_end: string; status: string; avatar_color: string
+    portal_enabled?: boolean; portal_invited_at?: string | null; portal_user_id?: string | null
     property?: { id: string; name: string; address: string }
 }
 type Payment = { id: string; amount: number; due_date: string; paid_date: string | null; status: string; notes: string | null }
@@ -23,6 +24,7 @@ export default function TenantDetailPage() {
     const [payments, setPayments] = useState<Payment[]>([])
     const [tickets, setTickets] = useState<Ticket[]>([])
     const [loading, setLoading] = useState(true)
+    const [inviting, setInviting] = useState(false)
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -38,6 +40,26 @@ export default function TenantDetailPage() {
     }, [id, supabase])
 
     useEffect(() => { fetchData() }, [fetchData])
+
+    async function inviteToPortal() {
+        if (!tenant) return
+        setInviting(true)
+        try {
+            const res = await fetch('/api/tenant/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tenantId: tenant.id }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'Invite failed')
+            toast.success(json.message || 'Invite sent!')
+            fetchData()
+        } catch (err: any) {
+            toast.error(err.message)
+        } finally {
+            setInviting(false)
+        }
+    }
 
     if (loading) return (
         <div className="p-8 w-full">
@@ -60,6 +82,10 @@ export default function TenantDetailPage() {
             {children}
         </div>
     )
+
+    const portalEnabled = tenant.portal_enabled
+    const portalInvitedAt = tenant.portal_invited_at
+    const portalUserId = tenant.portal_user_id
 
     return (
         <div className="p-8 w-full">
@@ -156,6 +182,50 @@ export default function TenantDetailPage() {
                             </div>
                         )}
                     </>
+                )}
+            </div>
+
+            {/* ── Tenant Portal Access ─────────────────────────────────────────── */}
+            <div className="mt-6">
+                {card(
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: portalEnabled ? 'rgba(34,197,94,0.1)' : 'rgba(232,57,42,0.08)' }}>
+                                <Shield className="w-5 h-5" style={{ color: portalEnabled ? '#16A34A' : '#E8392A' }} />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-bold mb-1" style={{ fontFamily: 'var(--font-bricolage)', color: 'var(--dash-text)' }}>Tenant Portal Access</h2>
+                                {portalEnabled && portalInvitedAt ? (
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', color: '#16A34A' }}>
+                                            <CheckCircle className="w-3.5 h-3.5" /> Invite Sent
+                                        </span>
+                                        <span className="text-xs" style={{ color: 'var(--dash-muted)' }}>
+                                            {new Date(portalInvitedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(107,114,128,0.1)', color: '#6B7280' }}>
+                                        <Clock className="w-3.5 h-3.5" /> Not invited yet
+                                    </span>
+                                )}
+                                {tenant.email && <p className="text-xs mt-1.5" style={{ color: 'var(--dash-muted)' }}>Invite will be sent to <strong>{tenant.email}</strong></p>}
+                            </div>
+                        </div>
+                        <button
+                            onClick={inviteToPortal}
+                            disabled={inviting || !tenant.email}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50 flex-shrink-0"
+                            style={{
+                                background: portalEnabled ? 'var(--dash-nav-hover)' : '#E8392A',
+                                color: portalEnabled ? 'var(--dash-text)' : 'white',
+                                border: portalEnabled ? '1px solid var(--dash-border)' : 'none',
+                            }}
+                        >
+                            <Mail className="w-4 h-4" />
+                            {inviting ? 'Sending…' : portalEnabled ? 'Resend Invite' : 'Invite to Portal'}
+                        </button>
+                    </div>
                 )}
             </div>
 

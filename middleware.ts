@@ -1,19 +1,55 @@
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { type NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-    return await updateSession(request)
+    const { pathname } = request.nextUrl
+
+    // Build a Supabase server client scoped to this request
+    let response = NextResponse.next({ request })
+
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return request.cookies.getAll() },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+                    response = NextResponse.next({ request })
+                    cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+                },
+            },
+        }
+    )
+
+    const { data: { session } } = await supabase.auth.getSession()
+
+    // ── /dashboard/* ─────────────────────────────────────────────────────────
+    if (pathname.startsWith('/dashboard')) {
+        if (!session) {
+            return NextResponse.redirect(new URL('/login', request.url))
+        }
+        return response
+    }
+
+    // ── /tenant/* ─────────────────────────────────────────────────────────────
+    if (pathname.startsWith('/tenant')) {
+        // Public: tenant login page
+        if (pathname === '/tenant/login' || pathname.startsWith('/tenant/login?')) {
+            return response
+        }
+        // Protected: all other /tenant/* pages
+        if (!session) {
+            return NextResponse.redirect(new URL('/tenant/login', request.url))
+        }
+        return response
+    }
+
+    return response
 }
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths EXCEPT static files and images:
-         * - _next/static (static files)
-         * - _next/image (image optimisation)
-         * - favicon.ico
-         * - Public files (svg, png, jpg, ...)
-         */
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }
