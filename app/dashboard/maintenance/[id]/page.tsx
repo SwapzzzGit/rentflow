@@ -53,7 +53,16 @@ export default function MaintenanceDetailPage() {
         setTicket(t)
         if (t.receipt_amount) setReceiptAmount(t.receipt_amount.toString())
         if (t.receipt_category) setReceiptCategory(t.receipt_category)
-        if (t.receipt_url) setReceiptPreview(t.receipt_url)
+        // Generate fresh signed URL from stored path (avoids expired signed URL bug)
+        if (t.receipt_url) {
+            const isPath = !t.receipt_url.startsWith('http')
+            if (isPath) {
+                const { data: signed } = await supabase.storage.from('receipts').createSignedUrl(t.receipt_url, 3600)
+                setReceiptPreview(signed?.signedUrl || null)
+            } else {
+                setReceiptPreview(t.receipt_url)
+            }
+        }
         if (t.cost_bearer) setCostBearer(t.cost_bearer as any)
         if (t.landlord_percent !== undefined) setLandlordPct(t.landlord_percent.toString())
         if (t.tenant_percent !== undefined) setTenantPct(t.tenant_percent.toString())
@@ -111,12 +120,10 @@ export default function MaintenanceDetailPage() {
                 .upload(uploadPath, receiptFile, { upsert: true })
             if (uploadError) { toast.error('Failed to upload receipt: ' + uploadError.message); setSavingReceipt(false); return }
 
-            // Use signed URL so private bucket renders correctly
-            const { data: signed } = await supabase.storage
-                .from('receipts')
-                .createSignedUrl(uploadPath, 3600)
-            receiptUrl = signed?.signedUrl || null
-            if (receiptUrl) setReceiptPreview(receiptUrl)
+            // Store the raw path in DB — generate fresh signed URL for preview only
+            receiptUrl = uploadPath
+            const { data: signed } = await supabase.storage.from('receipts').createSignedUrl(uploadPath, 3600)
+            if (signed?.signedUrl) setReceiptPreview(signed.signedUrl)
         }
 
         const { landlord, tenant: tenantP } = getCostPercents()
@@ -251,7 +258,7 @@ export default function MaintenanceDetailPage() {
                             return (
                                 <div key={step} className="flex items-center flex-1">
                                     {/* Circle + label */}
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center w-16">
                                         <button
                                             onClick={() => !updatingStatus && updateStatus(step)}
                                             className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all border-2 hover:scale-110"
@@ -263,7 +270,7 @@ export default function MaintenanceDetailPage() {
                                         >
                                             {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
                                         </button>
-                                        <p className="text-xs mt-2 capitalize whitespace-nowrap" style={{ color: active ? 'var(--dash-text)' : 'var(--dash-muted)' }}>{step}</p>
+                                        <p className="text-xs mt-2 capitalize text-center w-full" style={{ color: active ? 'var(--dash-text)' : 'var(--dash-muted)' }}>{step}</p>
                                     </div>
                                     {/* Connector line — only between steps */}
                                     {i < STEPS.length - 1 && (
