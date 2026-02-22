@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm install --no-frozen-lockfile && npm run build"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]
