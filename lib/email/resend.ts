@@ -285,8 +285,21 @@ export async function sendSignedLeaseToAll(params: {
   propertyName: string
   signedAt: string
   pdfUrl: string
+  landlordIp?: string
+  tenantIp?: string
+  leaseId?: string
 }) {
-  const { landlordName, landlordEmail, tenantName, tenantEmail, propertyName, signedAt, pdfUrl } = params
+  const { landlordName, landlordEmail, tenantName, tenantEmail, propertyName, signedAt, pdfUrl, landlordIp, tenantIp, leaseId } = params
+
+  const auditSummaryHtml = (landlordIp || tenantIp || leaseId) ? `
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F9FF;border-radius:12px;padding:16px;margin-top:16px;border:1px solid #BAE6FD;">
+          <tr><td><p style="margin:0 0 8px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#0284C7;">Audit Summary</p></td></tr>
+          ${landlordIp ? `<tr><td><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Landlord signed</p><p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#111;">${signedAt} · IP: ${landlordIp}</p></td></tr>` : ''}
+          ${tenantIp ? `<tr><td><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Tenant signed</p><p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#111;">${signedAt} · IP: ${tenantIp}</p></td></tr>` : ''}
+          ${leaseId ? `<tr><td><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Document ID</p><p style="margin:0;font-size:11px;font-family:monospace;color:#374151;">${leaseId}</p></td></tr>` : ''}
+        </table>
+        <p style="margin:8px 0 0;font-size:11px;color:#9CA3AF;">This audit summary serves as additional proof of signing. Full audit trail is embedded in the signed PDF.</p>
+  ` : ''
 
   const makeHtml = (recipientName: string) => emailWrapper(`
         <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">Lease Fully Signed ✓</h2>
@@ -297,9 +310,10 @@ export async function sendSignedLeaseToAll(params: {
           <tr><td style="padding-top:8px;"><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Tenant</p><p style="margin:0;font-size:14px;font-weight:600;color:#111;">${tenantName}</p></td></tr>
           <tr><td style="padding-top:8px;"><p style="margin:0 0 4px;font-size:12px;color:#6B7280;">Signed On</p><p style="margin:0;font-size:14px;font-weight:600;color:#111;">${signedAt}</p></td></tr>
         </table>
+        ${auditSummaryHtml}
         <p style="margin:16px 0 8px;font-size:13px;color:#6B7280;">A legally binding copy of this signed lease is available for download. Keep this for your records.</p>
         ${pdfUrl ? ctaButton('Download Signed Lease PDF', pdfUrl) : ''}
-        <p style="margin:16px 0 0;font-size:12px;color:#9CA3AF;">This lease was digitally signed via RentFlow. Electronic signatures are legally binding.</p>
+        <p style="margin:16px 0 0;font-size:12px;color:#9CA3AF;">This lease was digitally signed via RentFlow. Electronic signatures are legally binding under the IT Act 2000 (India) and ESIGN Act 2000 (USA).</p>
     `)
 
   await Promise.all([

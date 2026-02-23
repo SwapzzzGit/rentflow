@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendLeaseSigningRequest } from '@/lib/email/resend'
+import { getClientInfo } from '@/lib/get-client-info'
+import { logLeaseEvent } from '@/lib/audit'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://rentflow-virid.vercel.app'
 
@@ -12,6 +14,9 @@ export async function POST(req: NextRequest) {
 
         const { leaseId } = await req.json()
         if (!leaseId) return NextResponse.json({ error: 'leaseId required' }, { status: 400 })
+
+        // Extract client IP and user agent
+        const { ipAddress, userAgent } = getClientInfo(req)
 
         // Verify lease belongs to landlord
         const { data: lease, error: leaseErr } = await supabase
@@ -26,13 +31,15 @@ export async function POST(req: NextRequest) {
         // Generate signing token
         const signingToken = crypto.randomUUID()
 
-        // Update lease
+        // Update lease — store landlord IP/UA + status
         const { error: updateErr } = await supabase
             .from('leases')
             .update({
                 status: 'pending_landlord',
                 signing_token: signingToken,
                 signing_requested_at: new Date().toISOString(),
+                landlord_ip: ipAddress,
+                landlord_user_agent: userAgent,
             })
             .eq('id', leaseId)
 
@@ -45,20 +52,34 @@ export async function POST(req: NextRequest) {
             .eq('id', (lease as any).tenant_id)
             .single()
 
-        if (tenant?.email) {
-            const { data: landlordProfile } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', user.id)
-                .single()
+        // Get landlord profile
+        const { data: landlordProfile } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', user.id)
+            .single()
 
+        const landlordName = landlordProfile?.full_name || 'Your landlord'
+        const landlordEmail = landlordProfile?.email || user.email || ''
+
+        // Log SIGNING_REQUESTED audit event
+        await logLeaseEvent({
+            leaseId,
+            event: 'SIGNING_REQUESTED',
+            actorName: landlordName,
+            actorEmail: landlordEmail,
+            ipAddress,
+            userAgent,
+        })
+
+        if (tenant?.email) {
             const property = (lease as any).property
             const signingUrl = `${APP_URL}/tenant/lease/sign?token=${signingToken}`
 
             await sendLeaseSigningRequest({
                 tenantName: tenant.full_name,
                 tenantEmail: tenant.email,
-                landlordName: landlordProfile?.full_name || 'Your landlord',
+                landlordName,
                 propertyName: property?.name || 'your property',
                 leaseStartDate: '',
                 leaseEndDate: '',

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { SignaturePad } from '@/components/ui/signature-pad'
 import {
     Check, Clock, FileText, Download, Send, RefreshCw,
-    CheckCircle2, Circle, ChevronLeft
+    CheckCircle2, Circle, ChevronLeft, Shield
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -27,6 +27,16 @@ type Lease = {
     landlord_signature: string | null
     property?: { name: string; address: string }
     tenant?: { full_name: string; email: string; avatar_color: string }
+}
+
+type AuditLog = {
+    id: string
+    event: string
+    actor_name: string
+    actor_email: string
+    ip_address: string
+    user_agent: string
+    created_at: string
 }
 
 const STATUS_CONFIG = {
@@ -50,6 +60,7 @@ export default function LeaseDetailPage() {
     const [downloadingPdf, setDownloadingPdf] = useState(false)
     const [viewingDoc, setViewingDoc] = useState(false)
     const [landlordSig, setLandlordSig] = useState<string | null>(null)
+    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
 
     const fetchLease = useCallback(async () => {
         const { data: { user } } = await supabase.auth.getUser()
@@ -70,6 +81,15 @@ export default function LeaseDetailPage() {
 
         if (error || !data) { toast.error('Lease not found'); router.push('/dashboard/leases'); return }
         setLease(data as unknown as Lease)
+
+        // Fetch audit trail logs
+        const { data: logs } = await supabase
+            .from('lease_audit_logs')
+            .select('id, event, actor_name, actor_email, ip_address, user_agent, created_at')
+            .eq('lease_id', leaseId)
+            .order('created_at', { ascending: true })
+        setAuditLogs(logs || [])
+
         setLoading(false)
     }, [supabase, leaseId, router])
 
@@ -323,6 +343,62 @@ export default function LeaseDetailPage() {
                     ))}
                 </div>
             </div>
+
+            {/* Signing Audit Trail */}
+            {['pending_landlord', 'pending_tenant', 'signed'].includes(status) && (
+                <div className="rounded-2xl p-5" style={{ background: 'var(--dash-card-bg)', border: '1px solid var(--dash-card-border)' }}>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Shield className="w-4 h-4" style={{ color: '#2563EB' }} />
+                        <p className="text-sm font-bold" style={{ color: 'var(--dash-text)' }}>Signing Audit Trail</p>
+                    </div>
+
+                    {auditLogs.length === 0 ? (
+                        <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>No signing activity yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {auditLogs.map((log) => {
+                                const dotColor =
+                                    log.event.includes('SIGNED') ? '#16A34A'
+                                        : log.event.includes('VIEWED') ? '#2563EB'
+                                            : '#9CA3AF'
+                                const labelMap: Record<string, string> = {
+                                    SIGNING_REQUESTED: 'Signing Requested',
+                                    LANDLORD_SIGNED: 'Landlord Signed',
+                                    TENANT_VIEWED: 'Tenant Viewed',
+                                    TENANT_SIGNED: 'Tenant Signed',
+                                    PDF_GENERATED: 'PDF Generated',
+                                    PDF_DOWNLOADED: 'PDF Downloaded',
+                                }
+                                const ts = new Date(log.created_at)
+                                const formattedTs = ts.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                                    + ' at ' + ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' UTC'
+
+                                return (
+                                    <div key={log.id} className="flex items-start gap-3">
+                                        <div className="w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: dotColor }} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium" style={{ color: 'var(--dash-text)' }}>
+                                                {labelMap[log.event] || log.event}
+                                            </p>
+                                            <p className="text-xs" style={{ color: 'var(--dash-muted)' }}>
+                                                {log.actor_name} · {log.actor_email}
+                                            </p>
+                                            <p className="text-xs mt-0.5" style={{ color: 'var(--dash-muted)', fontFamily: 'monospace' }}>
+                                                IP: {log.ip_address || 'N/A'}
+                                            </p>
+                                            <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>{formattedTs}</p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    <p className="text-xs mt-4" style={{ color: '#9CA3AF' }}>
+                        This audit trail is tamper-proof and stored securely. It can be used as evidence of electronic consent in legal proceedings.
+                    </p>
+                </div>
+            )}
 
             {/* Download signed PDF */}
             {status === 'signed' && lease.signed_pdf_url && (

@@ -49,6 +49,13 @@ function SignPageContent() {
             if (data.status === 'signed') { setState('already_signed'); return }
             if (data.status !== 'pending_tenant') { setState('not_ready'); return }
             setState('ready')
+
+            // Log that tenant has VIEWED the signing page — legally significant proof of access
+            fetch('/api/leases/log-view', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+            }).catch(() => { /* audit logging failures are silent */ })
         }
         loadLease()
     }, [token])
@@ -288,7 +295,7 @@ function SignPageContent() {
                     <div className="mt-4 flex items-start gap-2">
                         <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#9CA3AF' }} />
                         <p className="text-xs" style={{ color: '#9CA3AF' }}>
-                            This electronic signature is legally binding under the Electronic Signatures in Global and National Commerce Act (E-SIGN) and applicable state laws. By clicking &quot;Sign Lease Agreement&quot;, you consent to using an electronic signature.
+                            By signing this document electronically, you agree that your electronic signature is the legal equivalent of your manual/handwritten signature. You consent to be legally bound by this lease agreement&apos;s terms and conditions. This electronic signature is valid under the Information Technology Act 2000 (India) and the Electronic Signatures in Global and National Commerce Act (ESIGN Act) 2000 (USA).
                         </p>
                     </div>
                 </div>
