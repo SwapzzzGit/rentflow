@@ -71,18 +71,20 @@ export function CustomSelect({
                 />
             </button>
 
-            {/* Dropdown panel */}
+            {/* Dropdown panel — fixed dark mode with explicit colors */}
             {open && (
                 <div
-                    className="absolute left-0 right-0 mt-1.5 rounded-xl overflow-hidden shadow-xl"
+                    className="absolute left-0 right-0 mt-1.5 rounded-xl overflow-hidden shadow-2xl"
                     style={{
-                        background: 'var(--dash-card-bg)',
-                        border: '1px solid var(--dash-card-border)',
                         zIndex: 999,
                         animation: 'selectIn 120ms cubic-bezier(0.16,1,0.3,1) both',
+                        border: '1px solid var(--dash-card-border)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        background: 'var(--custom-select-bg)',
                     }}
                 >
-                    {allOptions.map(opt => {
+                    {allOptions.map((opt, idx) => {
                         const isSelected = opt.value === value
                         const isPlaceholderOpt = opt.value === '' && !!placeholder
                         return (
@@ -94,17 +96,24 @@ export function CustomSelect({
                                     onChange(opt.value)
                                     setOpen(false)
                                 }}
-                                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-left transition-colors"
+                                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-left transition-colors custom-select-option"
                                 style={{
-                                    background: isSelected ? 'rgba(232,57,42,0.08)' : 'transparent',
-                                    color: isPlaceholderOpt ? 'var(--dash-muted)' : isSelected ? '#E8392A' : 'var(--dash-text)',
+                                    background: isSelected ? 'rgba(232,57,42,0.12)' : 'transparent',
+                                    color: isPlaceholderOpt
+                                        ? 'var(--dash-muted)'
+                                        : isSelected
+                                            ? '#E8392A'
+                                            : 'var(--dash-text)',
                                     fontWeight: isSelected ? 600 : 400,
+                                    borderBottom: idx < allOptions.length - 1 ? '1px solid var(--dash-border)' : 'none',
                                 }}
                                 onMouseEnter={e => {
-                                    if (!isSelected) e.currentTarget.style.background = 'var(--dash-nav-hover)'
+                                    if (!isSelected) {
+                                        e.currentTarget.style.background = 'var(--dash-nav-hover)'
+                                    }
                                 }}
                                 onMouseLeave={e => {
-                                    if (!isSelected) e.currentTarget.style.background = 'transparent'
+                                    e.currentTarget.style.background = isSelected ? 'rgba(232,57,42,0.12)' : 'transparent'
                                 }}
                             >
                                 <span>{opt.label}</span>
@@ -121,6 +130,12 @@ export function CustomSelect({
                 @keyframes selectIn {
                     from { opacity: 0; transform: translateY(-6px) scale(0.98); }
                     to   { opacity: 1; transform: translateY(0)    scale(1);    }
+                }
+                :root {
+                    --custom-select-bg: rgba(255,255,255,0.98);
+                }
+                html.dark {
+                    --custom-select-bg: rgba(17,24,39,0.98);
                 }
             `}</style>
         </div>

@@ -321,3 +321,74 @@ export async function sendSignedLeaseToAll(params: {
     resend.emails.send({ from: FROM, to: tenantEmail, subject: `Lease Fully Signed — ${propertyName}`, html: makeHtml(tenantName) }),
   ])
 }
+
+export async function sendLeaseTerminationToTenant(params: {
+  tenantName: string
+  tenantEmail: string
+  propertyName: string
+  landlordName: string
+  reasonCategory: string
+  reasonDetail: string
+  noticePeriodDays: number
+  effectiveDate: string
+}) {
+  const { tenantName, tenantEmail, propertyName, landlordName, reasonCategory, reasonDetail, noticePeriodDays, effectiveDate } = params
+
+  const html = emailWrapper(`
+    <div style="background:#FEF2F2; border:1px solid #FEE2E2; border-radius:12px; padding:16px; margin-bottom:24px;">
+      <p style="margin:0; font-size:14px; font-weight:700; color:#991B1B; text-transform:uppercase; letter-spacing:0.05em;">Important: Lease Termination Notice</p>
+    </div>
+    <h2 style="margin:0 0 12px; font-size:20px; font-weight:700; color:#111827;">Lease Termination Notification</h2>
+    <p style="margin:0 0 20px; color:#4B5563; font-size:15px; line-height:1.5;">Hi ${tenantName},</p>
+    <p style="margin:0 0 20px; color:#4B5563; font-size:15px; line-height:1.5;">This email is to formally notify you that your lease agreement for <strong>${propertyName}</strong> has been terminated by your landlord, ${landlordName}.</p>
+    
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB; border:1px solid #E5E7EB; border-radius:12px; padding:20px; margin-bottom:24px;">
+      <tr><td style="padding-bottom:12px;"><p style="margin:0 0 4px; font-size:12px; color:#6B7280; font-weight:600; text-transform:uppercase;">Reason Category</p><p style="margin:0; font-size:14px; font-weight:600; color:#111827;">${reasonCategory}</p></td></tr>
+      <tr><td style="padding-bottom:12px;"><p style="margin:0 0 4px; font-size:12px; color:#6B7280; font-weight:600; text-transform:uppercase;">Reason Detail</p><p style="margin:0; font-size:14px; color:#374151;">${reasonDetail}</p></td></tr>
+      <tr><td style="padding-bottom:12px;"><p style="margin:0 0 4px; font-size:12px; color:#6B7280; font-weight:600; text-transform:uppercase;">Notice Period</p><p style="margin:0; font-size:14px; font-weight:600; color:#111827;">${noticePeriodDays} Days</p></td></tr>
+      <tr><td><p style="margin:0 0 4px; font-size:12px; color:#6B7280; font-weight:600; text-transform:uppercase;">Effective Date</p><p style="margin:0; font-size:14px; font-weight:700; color:#991B1B;">${effectiveDate}</p></td></tr>
+    </table>
+
+    <p style="margin:0 0 20px; color:#4B5563; font-size:14px; line-height:1.5;">Please contact your landlord directly if you have any questions regarding this termination or the next steps.</p>
+    <p style="margin:0; font-size:12px; color:#9CA3AF;">This notice was sent via RentFlow on behalf of ${landlordName}.</p>
+  `)
+
+  await resend.emails.send({
+    from: FROM,
+    to: tenantEmail,
+    subject: `Important: Your Lease for ${propertyName} Has Been Terminated`,
+    html,
+  })
+}
+
+export async function sendLeaseTerminationConfirmToLandlord(params: {
+  landlordName: string
+  landlordEmail: string
+  tenantName: string
+  propertyName: string
+  reasonCategory: string
+  effectiveDate: string
+}) {
+  const { landlordName, landlordEmail, tenantName, propertyName, reasonCategory, effectiveDate } = params
+
+  const html = emailWrapper(`
+    <h2 style="margin:0 0 12px; font-size:20px; font-weight:700; color:#111827;">Lease Termination Confirmed</h2>
+    <p style="margin:0 0 20px; color:#4B5563; font-size:15px; line-height:1.5;">Hi ${landlordName},</p>
+    <p style="margin:0 0 20px; color:#4B5563; font-size:15px; line-height:1.5;">You have successfully terminated the lease agreement for <strong>${tenantName}</strong> at <strong>${propertyName}</strong>.</p>
+    
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FDF4; border:1px solid #DCFCE7; border-radius:12px; padding:20px; margin-bottom:24px;">
+      <tr><td style="padding-bottom:12px;"><p style="margin:0 0 4px; font-size:12px; color:#166534; font-weight:600; text-transform:uppercase;">Termination Reason</p><p style="margin:0; font-size:14px; font-weight:600; color:#14532D;">${reasonCategory}</p></td></tr>
+      <tr><td><p style="margin:0 0 4px; font-size:12px; color:#166534; font-weight:600; text-transform:uppercase;">Effective Date</p><p style="margin:0; font-size:14px; font-weight:700; color:#15803D;">${effectiveDate}</p></td></tr>
+    </table>
+
+    <p style="margin:0; color:#4B5563; font-size:14px; line-height:1.5;">A formal termination notice has been sent to the tenant's email address.</p>
+  `)
+
+  await resend.emails.send({
+    from: FROM,
+    to: landlordEmail,
+    subject: `Lease Termination Confirmed — ${propertyName}`,
+    html,
+  })
+}
+
