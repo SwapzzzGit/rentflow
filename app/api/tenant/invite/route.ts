@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         // 3. Invite via admin API (sends magic link email)
         const admin = createAdminClient()
         const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(tenant.email, {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://rentflow-virid.vercel.app'}/tenant/dashboard`,
+            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/set-password`,
             data: { role: 'tenant', tenant_id: tenantId },
         })
 
