@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
                     const { data: users } = await admin.auth.admin.listUsers()
                     const existing = users?.users.find(u => u.email === tenant.email)
                     if (existing) {
-                        console.log('[invite] User exists, switching to magiclink')
+                        console.log('[invite] User exists, generating magiclink')
                         const { data: magicData, error: magicErr } = await admin.auth.admin.generateLink({
                             type: 'magiclink',
                             email: tenant.email,
@@ -106,6 +106,9 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // IMPORTANT: Log the URL to verify in Vercel it's the full action_link
+        console.log('[invite] Final Invite URL being sent in email:', inviteUrl)
+
         // 4. Send Branded Email via Resend
         const { sendTenantPortalInvite } = await import('@/lib/email/resend')
         console.log(`[invite] Step 3: Sending Resend email to ${tenant.email}`)
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
             tenantEmail: tenant.email,
             landlordName: profile?.full_name || landlord.user_metadata?.full_name || 'Your Landlord',
             propertyName: (tenant.property as any)?.name || 'Property',
-            inviteUrl
+            inviteUrl: inviteUrl // This is the Supabase action_link
         })
         console.log('[invite] Resend result:', resendResult)
 

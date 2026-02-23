@@ -23,45 +23,46 @@ export default function SetPasswordPage() {
     useEffect(() => {
         let isMounted = true
 
-        const checkSession = async () => {
+        const checkInitialSession = async () => {
             try {
-                // Supabase createBrowserClient automatically parses hash fragments 
-                // and establishes session if tokens are in the URL.
+                // First check if a session already exists (e.g. established from hash on mount)
                 const { data: { session } } = await supabase.auth.getSession()
-
                 if (session && isMounted) {
+                    console.log('[set-password] Session found on mount')
                     setSessionReady(true)
                     setVerifying(false)
                 }
             } catch (err) {
-                console.error('[set-password] Session check error:', err)
+                console.error('[set-password] getSession error:', err)
             }
         }
 
-        // 1. Initial check
-        checkSession()
+        checkInitialSession()
 
-        // 2. Listen for auth state changes (Supabase establishes session from hash asynchronously)
+        // 2. Listen for auth state changes — this is CRITICAL for invite links
+        // Supabase verifies the token and fires SIGNED_IN or PASSWORD_RECOVERY
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return
 
-            console.log('[set-password] Auth event:', event)
+            console.log('[set-password] Auth state changed:', event)
 
             if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
                 if (session) {
+                    console.log('[set-password] Valid session established via', event)
                     setSessionReady(true)
                     setVerifying(false)
                 }
             }
         })
 
-        // 3. Timeout if no session established after 3 seconds
+        // 3. Wait up to 5 seconds for Supabase to verify the URL hash tokens
         const timer = setTimeout(() => {
             if (isMounted && !sessionReady) {
+                console.log('[set-password] Verification timeout reached')
                 setVerifying(false)
                 setError('Invalid or expired invite link. Please ask your landlord to send a new invite.')
             }
-        }, 3500)
+        }, 5000)
 
         return () => {
             isMounted = false
@@ -85,6 +86,7 @@ export default function SetPasswordPage() {
 
         setSubmitting(true)
         try {
+            // Update the user's password (this updates the auth user in Supabase)
             const { error: updateErr } = await supabase.auth.updateUser({
                 password: password
             })
@@ -94,7 +96,7 @@ export default function SetPasswordPage() {
             setSuccess(true)
             toast.success('Password set successfully!')
 
-            // Redirect after 2 seconds
+            // Short delay for visual feedback before redirecting to dashboard
             setTimeout(() => {
                 router.push('/tenant/dashboard')
             }, 2000)
@@ -115,7 +117,7 @@ export default function SetPasswordPage() {
         )
     }
 
-    if (error) {
+    if (error && !sessionReady) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-black">
                 <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-lg text-center">
@@ -158,7 +160,6 @@ export default function SetPasswordPage() {
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-black font-sans">
             <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-lg">
-                {/* Logo Section */}
                 <div className="flex items-center gap-2.5 mb-8">
                     <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
                         <Shield className="w-6 h-6 text-white" />
@@ -169,14 +170,14 @@ export default function SetPasswordPage() {
                     </div>
                 </div>
 
-                <div className="mb-8">
+                <div className="mb-8 text-center sm:text-left">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to RentFlow</h1>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Please set a secure password for your tenant account.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Please set a secure password for your tenant account to get started.</p>
                 </div>
 
                 <form onSubmit={handleSetPassword} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">New Password</label>
+                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-1">New Password</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <Lock className="w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -201,7 +202,7 @@ export default function SetPasswordPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Confirm Password</label>
+                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-1">Confirm Password</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <Lock className="w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -221,7 +222,7 @@ export default function SetPasswordPage() {
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group"
+                        className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2 group"
                     >
                         {submitting ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -235,8 +236,8 @@ export default function SetPasswordPage() {
                 </form>
 
                 <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Password must be at least 8 characters long and include numbers or special characters for extra security.
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed px-4">
+                        Secure your account with at least 8 characters. We recommend a mix of letters, numbers, and symbols.
                     </p>
                 </div>
             </div>
