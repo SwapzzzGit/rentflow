@@ -54,14 +54,27 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         router.push('/tenant/login')
     }
 
-    // ── Still checking: show blank screen – do NOT redirect yet ──
+    // ── Auth & Route Protection ──
+    const isAuthPage = pathname === '/tenant/login' || pathname === '/tenant/set-password'
+
+    useEffect(() => {
+        if (session === null && !isAuthPage) {
+            router.replace('/tenant/login')
+        }
+    }, [session, router, isAuthPage])
+
+    // ── 1. If it's an auth page, just render it immediately (they handle their own auth redirects/shells) ──
+    if (isAuthPage) {
+        return <>{children}</>
+    }
+
+    // ── 2. Still checking session: show blank screen (warm stone) ──
     if (session === undefined) {
         return <div className="min-h-screen" style={{ background: '#F5F4F0' }} />
     }
 
-    // ── Definitely no session: now redirect ──
+    // ── 3. Definitely no session: return null (useEffect will handle the redirect) ──
     if (session === null) {
-        router.replace('/tenant/login')
         return null
     }
 
