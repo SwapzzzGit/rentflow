@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Home, Menu, X } from "lucide-react"
 
-const navLinks = ["Features", "Pricing", "For Tenants", "Changelog", "Blog"]
+const navLinks = ["Features", "Pricing", "For Tenants", "Changelog"]
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -31,6 +31,9 @@ export function Navbar() {
               {link}
             </a>
           ))}
+          <Link href="/blog" className="text-sm text-[#999999] transition-colors hover:text-[#ffffff]">
+            Blog
+          </Link>
         </div>
 
         {/* Right */}
@@ -67,6 +70,13 @@ export function Navbar() {
               {link}
             </a>
           ))}
+          <Link
+            href="/blog"
+            className="text-lg text-[#999999] transition-colors hover:text-[#ffffff]"
+            onClick={() => setMobileOpen(false)}
+          >
+            Blog
+          </Link>
           <Link
             href="/login"
             className="text-lg text-[#999999] transition-colors hover:text-[#ffffff]"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Upload, Camera, CheckCircle, X, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Upload, Camera, Check, X, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StatusBadge } from '@/components/ui/status-badge'
 import toast from 'react-hot-toast'
@@ -230,23 +230,24 @@ export default function MaintenanceDetailPage() {
                                             onClick={() => !updatingStatus && updateStatus(step)}
                                             className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all border-2 hover:scale-110"
                                             style={{
-                                                background: active ? '#E8392A' : done ? 'rgba(34,197,94,0.15)' : 'var(--dash-nav-hover)',
-                                                borderColor: active ? '#E8392A' : done ? '#22C55E' : 'var(--dash-border)',
-                                                color: active ? '#fff' : done ? '#22C55E' : 'var(--dash-muted)',
+                                                background: active ? '#E8392A' : done ? '#9CA3AF' : 'transparent',
+                                                borderColor: active ? '#E8392A' : done ? '#9CA3AF' : '#D1D5DB',
+                                                color: active ? '#fff' : done ? '#fff' : '#9CA3AF',
                                             }}
                                         >
-                                            {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
+                                            {done ? <Check className="w-4 h-4" /> : i + 1}
                                         </button>
                                         <p className="text-xs capitalize whitespace-nowrap" style={{ color: active ? 'var(--dash-text)' : 'var(--dash-muted)' }}>{step}</p>
                                     </div>
                                     {/* Connector: mt-[18px] = half of circle h-9 (36px) to sit level with center */}
                                     {i < STEPS.length - 1 && (
-                                        <div className="flex-1 h-px mt-[18px] mx-1" style={{ background: STEPS.indexOf(ticket.status) > i ? '#22C55E' : 'var(--dash-border)' }} />
+                                        <div className="flex-1 h-px mt-[18px] mx-1" style={{ background: STEPS.indexOf(ticket.status) > i ? '#9CA3AF' : '#E5E7EB' }} />
                                     )}
                                 </>
                             )
                         })}
                     </div>
+                    <p className="text-xs text-center mt-4" style={{ color: '#9CA3AF' }}>Click a step to update status</p>
                 </>
             )}
 
