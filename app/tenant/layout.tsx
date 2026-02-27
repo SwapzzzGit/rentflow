@@ -55,7 +55,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     }
 
     // ── Auth & Route Protection ──
-    const isAuthPage = pathname === '/tenant/login' || pathname === '/tenant/set-password'
+    const isAuthPage = pathname === '/tenant/login' || pathname === '/tenant/forgot-password' || pathname === '/tenant/set-password'
 
     useEffect(() => {
         if (session === null && !isAuthPage) {

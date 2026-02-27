@@ -11,6 +11,7 @@ export default function SetPasswordPage() {
     const router = useRouter()
     const [verifying, setVerifying] = useState(true)
     const [sessionReady, setSessionReady] = useState(false)
+    const [isResetFlow, setIsResetFlow] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const [password, setPassword] = useState('')
@@ -42,6 +43,7 @@ export default function SetPasswordPage() {
                 if (session) {
                     setSessionReady(true)
                     setVerifying(false)
+                    if (event === 'PASSWORD_RECOVERY') setIsResetFlow(true)
                 }
             }
         })
@@ -49,7 +51,7 @@ export default function SetPasswordPage() {
         const timer = setTimeout(() => {
             if (isMounted && !sessionReady) {
                 setVerifying(false)
-                setError('Invalid or expired invite link. Please ask your landlord to send a new invite.')
+                setError('Link expired or invalid. Please request a new one if needed.')
             }
         }, 5000)
 
@@ -160,8 +162,12 @@ export default function SetPasswordPage() {
 
                 {/* Card */}
                 <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-serif)' }}>Welcome to RentFlow</h1>
-                    <p className="text-sm mb-7" style={{ color: '#9CA3AF' }}>Set a secure password for your tenant account.</p>
+                    <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+                        {isResetFlow ? 'Set a new password' : 'Welcome to RentFlow'}
+                    </h1>
+                    <p className="text-sm mb-7" style={{ color: '#9CA3AF' }}>
+                        {isResetFlow ? 'Enter and confirm your new password below.' : 'Set a secure password for your tenant account.'}
+                    </p>
 
                     <form onSubmit={handleSetPassword} className="space-y-5">
                         <div className="space-y-1.5">

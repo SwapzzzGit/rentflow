@@ -34,8 +34,9 @@ export async function middleware(request: NextRequest) {
 
     // ── /tenant/* ─────────────────────────────────────────────────────────────
     if (pathname.startsWith('/tenant')) {
-        // Public: tenant login page
-        if (pathname === '/tenant/login' || pathname.startsWith('/tenant/login?')) {
+        // Public: tenant auth pages
+        const publicTenantPages = ['/tenant/login', '/tenant/forgot-password', '/tenant/set-password']
+        if (publicTenantPages.includes(pathname) || pathname.startsWith('/tenant/login?')) {
             return response
         }
         // Protected: all other /tenant/* pages

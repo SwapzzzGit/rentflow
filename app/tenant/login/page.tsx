@@ -105,6 +105,12 @@ export default function TenantLoginPage() {
                                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
+                            <Link
+                                href="/tenant/forgot-password"
+                                className="text-xs text-gray-400 hover:text-white transition text-right block mt-1 mb-4"
+                            >
+                                Forgot password?
+                            </Link>
                         </div>
 
                         <button
