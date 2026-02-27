@@ -51,10 +51,10 @@ export default function TenantMaintenancePage() {
     useEffect(() => {
         async function load() {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) { router.push('/tenant/login'); return }
+            if (!user) return
 
             const { data: t } = await supabase.from('tenants').select('id').eq('portal_user_id', user.id).single()
-            if (!t) { router.push('/tenant/login'); return }
+            if (!t) return
 
             setTenantId(t.id)
             setUserId(user.id)
@@ -69,7 +69,7 @@ export default function TenantMaintenancePage() {
             setLoading(false)
         }
         load()
-    }, [supabase, router])
+    }, [supabase])
 
     function handlePhotoSelect(files: FileList | null) {
         if (!files) return
@@ -145,7 +145,7 @@ export default function TenantMaintenancePage() {
     const labelStyle = { color: '#6B7280' }
 
     if (loading) return (
-        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#F3F4F6' }} />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#E8E7E3' }} />)}</div>
     )
 
     return (

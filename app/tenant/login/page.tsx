@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2, Home } from 'lucide-react'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
+import type { Session } from '@supabase/supabase-js'
 
 export default function TenantLoginPage() {
     const supabase = createClient()
@@ -14,41 +16,66 @@ export default function TenantLoginPage() {
     const [showPw, setShowPw] = useState(false)
     const [loading, setLoading] = useState(false)
 
-    // If already authed, redirect
+    // undefined = still checking, null = not authed, Session = already in
+    const [session, setSession] = useState<Session | null | undefined>(undefined)
+
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) router.push('/tenant/dashboard')
+        supabase.auth.getSession().then(({ data }) => {
+            setSession(data.session ?? null)
         })
-    }, [supabase, router])
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+            setSession(s ?? null)
+        })
+        return () => subscription.unsubscribe()
+    }, [supabase])
+
+    // Already authed → send to dashboard
+    if (session === undefined) return <div className="min-h-screen" style={{ background: '#080808' }} />
+    if (session !== null) {
+        router.replace('/tenant/dashboard')
+        return null
+    }
 
     async function handleLogin(e: React.FormEvent) {
         e.preventDefault()
         if (!email || !password) { toast.error('Please enter email and password'); return }
         setLoading(true)
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) {
-            toast.error(error.message)
-            setLoading(false)
-            return
-        }
+        if (error) { toast.error(error.message); setLoading(false); return }
         router.push('/tenant/dashboard')
     }
 
-    const inputCls = "w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-red-500/20 focus:border-[#E8392A]"
-    const inputStyle = { background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#111' }
+    const inputStyle = {
+        background: 'rgba(255,255,255,0.05)',
+        border: '1.5px solid rgba(255,255,255,0.08)',
+        color: '#fff',
+    }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #FFF5F4 0%, #FFFFFF 50%, #F8F9FF 100%)' }}>
+        <div
+            className="min-h-screen flex items-center justify-center p-4"
+            style={{
+                background: '#080808',
+                backgroundImage: 'radial-gradient(ellipse 70% 40% at 50% -5%, rgba(232,57,42,0.12) 0%, transparent 60%)',
+            }}
+        >
             <div className="w-full max-w-sm">
-                {/* Brand */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 text-white text-2xl font-bold shadow-lg" style={{ background: 'linear-gradient(135deg, #E8392A, #c9281a)' }}>R</div>
-                    <h1 className="text-2xl font-bold mb-1" style={{ color: '#111', fontFamily: 'var(--font-bricolage, serif)' }}>Tenant Portal</h1>
-                    <p className="text-sm" style={{ color: '#6B7280' }}>Sign in to view your rent, lease & maintenance</p>
+                {/* Logo */}
+                <div className="flex items-center gap-2.5 mb-8 justify-center">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#E8392A' }}>
+                        <Home className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-xl font-bold text-white" style={{ fontFamily: 'var(--font-serif)' }}>RentFlow</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(232,57,42,0.15)', color: '#E8392A', border: '1px solid rgba(232,57,42,0.3)' }}>
+                        Tenant Portal
+                    </span>
                 </div>
 
                 {/* Card */}
-                <div className="rounded-2xl p-7 shadow-xl" style={{ background: 'white', border: '1px solid #F0F0F5' }}>
+                <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-serif)' }}>Sign in</h1>
+                    <p className="text-sm mb-7" style={{ color: '#9CA3AF' }}>View your rent, lease &amp; maintenance</p>
+
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>Email address</label>
@@ -57,7 +84,7 @@ export default function TenantLoginPage() {
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
                                 placeholder="you@example.com"
-                                className={inputCls}
+                                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-red-500/20"
                                 style={inputStyle}
                                 autoComplete="email"
                             />
@@ -70,7 +97,7 @@ export default function TenantLoginPage() {
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     placeholder="Your password"
-                                    className={`${inputCls} pr-12`}
+                                    className="w-full px-4 py-3 pr-12 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-red-500/20"
                                     style={inputStyle}
                                     autoComplete="current-password"
                                 />
@@ -83,22 +110,25 @@ export default function TenantLoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
-                            style={{ background: 'linear-gradient(135deg, #E8392A, #c9281a)' }}
+                            className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
+                            style={{ background: '#E8392A' }}
                         >
                             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</> : 'Sign in'}
                         </button>
                     </form>
                 </div>
 
-                {/* Footer help */}
+                {/* Footer */}
                 <div className="mt-5 text-center space-y-2">
-                    <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                    <p className="text-xs" style={{ color: '#4B5563' }}>
                         Don&apos;t have access?{' '}
-                        <span className="font-medium" style={{ color: '#6B7280' }}>Request an invite from your landlord.</span>
+                        <span style={{ color: '#6B7280' }}>Request an invite from your landlord.</span>
                     </p>
-                    <p className="text-xs" style={{ color: '#D1D5DB' }}>
-                        Your first login uses the link sent to your email.
+                    <p className="text-xs" style={{ color: '#374151' }}>
+                        Are you a landlord?{' '}
+                        <Link href="/login" className="font-semibold transition-opacity hover:opacity-80" style={{ color: '#E8392A' }}>
+                            Log in here →
+                        </Link>
                     </p>
                 </div>
             </div>

@@ -3,13 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Shield, Lock, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ChevronRight } from 'lucide-react'
+import { Home, Lock, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function SetPasswordPage() {
     const supabase = createClient()
     const router = useRouter()
-    const [loading, setLoading] = useState(true)
     const [verifying, setVerifying] = useState(true)
     const [sessionReady, setSessionReady] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -25,10 +24,8 @@ export default function SetPasswordPage() {
 
         const checkInitialSession = async () => {
             try {
-                // First check if a session already exists (e.g. established from hash on mount)
                 const { data: { session } } = await supabase.auth.getSession()
                 if (session && isMounted) {
-                    console.log('[set-password] Session found on mount')
                     setSessionReady(true)
                     setVerifying(false)
                 }
@@ -39,26 +36,18 @@ export default function SetPasswordPage() {
 
         checkInitialSession()
 
-        // 2. Listen for auth state changes — this is CRITICAL for invite links
-        // Supabase verifies the token and fires SIGNED_IN or PASSWORD_RECOVERY
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return
-
-            console.log('[set-password] Auth state changed:', event)
-
             if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
                 if (session) {
-                    console.log('[set-password] Valid session established via', event)
                     setSessionReady(true)
                     setVerifying(false)
                 }
             }
         })
 
-        // 3. Wait up to 5 seconds for Supabase to verify the URL hash tokens
         const timer = setTimeout(() => {
             if (isMounted && !sessionReady) {
-                console.log('[set-password] Verification timeout reached')
                 setVerifying(false)
                 setError('Invalid or expired invite link. Please ask your landlord to send a new invite.')
             }
@@ -73,174 +62,164 @@ export default function SetPasswordPage() {
 
     const handleSetPassword = async (e: React.FormEvent) => {
         e.preventDefault()
-
-        if (password.length < 8) {
-            toast.error('Password must be at least 8 characters')
-            return
-        }
-
-        if (password !== confirmPassword) {
-            toast.error('Passwords do not match')
-            return
-        }
-
+        if (password.length < 8) { toast.error('Password must be at least 8 characters'); return }
+        if (password !== confirmPassword) { toast.error('Passwords do not match'); return }
         setSubmitting(true)
         try {
-            // Update the user's password (this updates the auth user in Supabase)
-            const { error: updateErr } = await supabase.auth.updateUser({
-                password: password
-            })
-
+            const { error: updateErr } = await supabase.auth.updateUser({ password })
             if (updateErr) throw updateErr
-
             setSuccess(true)
             toast.success('Password set successfully!')
-
-            // Short delay for visual feedback before redirecting to dashboard
-            setTimeout(() => {
-                router.push('/tenant/dashboard')
-            }, 2000)
+            setTimeout(() => router.push('/tenant/dashboard'), 2000)
         } catch (err: any) {
             toast.error(err.message || 'Failed to update password')
             setSubmitting(false)
         }
     }
 
+    // Shared dark page shell with red glow
+    const Shell = ({ children }: { children: React.ReactNode }) => (
+        <div
+            className="min-h-screen flex items-center justify-center p-4"
+            style={{
+                background: '#080808',
+                backgroundImage: 'radial-gradient(ellipse 70% 40% at 50% -5%, rgba(232,57,42,0.12) 0%, transparent 60%)',
+            }}
+        >
+            {children}
+        </div>
+    )
+
     if (verifying) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-black">
+            <Shell>
                 <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Verifying your invite link...</p>
+                    <Loader2 className="w-10 h-10 animate-spin" style={{ color: '#E8392A' }} />
+                    <p className="text-sm font-medium" style={{ color: '#9CA3AF' }}>Verifying your invite link…</p>
                 </div>
-            </div>
+            </Shell>
         )
     }
 
     if (error && !sessionReady) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-black">
-                <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-lg text-center">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            <Shell>
+                <div className="w-full max-w-md rounded-2xl p-8 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(232,57,42,0.1)' }}>
+                        <XCircle className="w-7 h-7" style={{ color: '#E8392A' }} />
                     </div>
-                    <h1 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">Invite Link Error</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-                        {error}
-                    </p>
+                    <h1 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-serif)' }}>Invite Link Error</h1>
+                    <p className="text-sm mb-7" style={{ color: '#9CA3AF' }}>{error}</p>
                     <button
                         onClick={() => router.push('/tenant/login')}
-                        className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold transition-colors text-gray-900 dark:text-white"
+                        className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-85"
+                        style={{ background: '#E8392A' }}
                     >
                         Back to Login
                     </button>
                 </div>
-            </div>
+            </Shell>
         )
     }
 
     if (success) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-black">
-                <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-lg text-center">
-                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <Shell>
+                <div className="w-full max-w-md rounded-2xl p-8 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(34,197,94,0.1)' }}>
+                        <CheckCircle2 className="w-7 h-7" style={{ color: '#22C55E' }} />
                     </div>
-                    <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Password Set!</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mb-2">Your account is now ready.</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Taking you to your dashboard...</p>
-                    <div className="mt-8 flex justify-center">
-                        <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-                    </div>
+                    <h1 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-serif)' }}>Password Set!</h1>
+                    <p className="text-sm mb-1" style={{ color: '#9CA3AF' }}>Your account is ready.</p>
+                    <p className="text-xs mb-6" style={{ color: '#555' }}>Taking you to your dashboard…</p>
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto" style={{ color: '#22C55E' }} />
                 </div>
-            </div>
+            </Shell>
         )
     }
 
+    const inputStyle = {
+        background: 'rgba(255,255,255,0.05)',
+        border: '1.5px solid rgba(255,255,255,0.08)',
+        color: '#fff',
+    }
+
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-black font-sans">
-            <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-lg">
-                <div className="flex items-center gap-2.5 mb-8">
-                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <Shield className="w-6 h-6 text-white" />
+        <Shell>
+            <div className="w-full max-w-sm">
+                {/* Logo */}
+                <div className="flex items-center gap-2.5 mb-8 justify-center">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#E8392A' }}>
+                        <Home className="w-5 h-5 text-white" />
                     </div>
-                    <div>
-                        <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-bricolage)' }}>RentFlow</span>
-                        <p className="text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400 font-bold">Tenant Portal</p>
-                    </div>
+                    <span className="text-xl font-bold text-white" style={{ fontFamily: 'var(--font-serif)' }}>RentFlow</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(232,57,42,0.15)', color: '#E8392A', border: '1px solid rgba(232,57,42,0.3)' }}>
+                        Tenant Portal
+                    </span>
                 </div>
 
-                <div className="mb-8 text-center sm:text-left">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to RentFlow</h1>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Please set a secure password for your tenant account to get started.</p>
-                </div>
+                {/* Card */}
+                <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-serif)' }}>Welcome to RentFlow</h1>
+                    <p className="text-sm mb-7" style={{ color: '#9CA3AF' }}>Set a secure password for your tenant account.</p>
 
-                <form onSubmit={handleSetPassword} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-1">New Password</label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <Lock className="w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                    <form onSubmit={handleSetPassword} className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>New Password</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Lock className="w-4 h-4" style={{ color: '#6B7280' }} />
+                                </div>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    minLength={8}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full pl-11 pr-12 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-red-500/20"
+                                    style={inputStyle}
+                                    placeholder="Min 8 characters"
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center" style={{ color: '#6B7280' }}>
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                             </div>
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                required
-                                minLength={8}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full pl-11 pr-12 py-3.5 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none border"
-                                placeholder="Min 8 characters"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-1">Confirm Password</label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <Lock className="w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>Confirm Password</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Lock className="w-4 h-4" style={{ color: '#6B7280' }} />
+                                </div>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    minLength={8}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="w-full pl-11 pr-12 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-red-500/20"
+                                    style={inputStyle}
+                                    placeholder="Repeat your password"
+                                />
                             </div>
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                required
-                                minLength={8}
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full pl-11 pr-12 py-3.5 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none border"
-                                placeholder="Repeat your password"
-                            />
                         </div>
-                    </div>
 
-                    <button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2 group"
-                    >
-                        {submitting ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <>
-                                Set Password
-                                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                            </>
-                        )}
-                    </button>
-                </form>
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                            style={{ background: '#E8392A' }}
+                        >
+                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set Password'}
+                        </button>
+                    </form>
 
-                <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed px-4">
-                        Secure your account with at least 8 characters. We recommend a mix of letters, numbers, and symbols.
+                    <p className="text-xs text-center mt-6" style={{ color: '#4B5563' }}>
+                        Use at least 8 characters — mix of letters, numbers &amp; symbols.
                     </p>
                 </div>
             </div>
-        </div>
+        </Shell>
     )
 }

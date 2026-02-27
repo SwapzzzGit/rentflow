@@ -40,7 +40,7 @@ export default function TenantDashboard() {
     useEffect(() => {
         async function load() {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) { router.push('/tenant/login'); return }
+            if (!user) return  // layout handles redirect
 
             const { data: t } = await supabase
                 .from('tenants')
@@ -48,7 +48,7 @@ export default function TenantDashboard() {
                 .eq('portal_user_id', user.id)
                 .single()
 
-            if (!t) { router.push('/tenant/login'); return }
+            if (!t) return  // layout will redirect if genuinely unauthorised
             setTenant(t as unknown as Tenant)
 
             const [{ data: leaseData }, { data: rentData }, { data: ticketsData }] = await Promise.all([
@@ -63,11 +63,11 @@ export default function TenantDashboard() {
             setLoading(false)
         }
         load()
-    }, [supabase, router])
+    }, [supabase])
 
     if (loading) return (
         <div className="space-y-4">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-2xl animate-pulse" style={{ background: '#F3F4F6' }} />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-2xl animate-pulse" style={{ background: '#E8E7E3' }} />)}
         </div>
     )
 

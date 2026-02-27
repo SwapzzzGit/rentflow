@@ -28,10 +28,10 @@ export default function TenantRentPage() {
     useEffect(() => {
         async function load() {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) { router.push('/tenant/login'); return }
+            if (!user) return
 
             const { data: t } = await supabase.from('tenants').select('id').eq('portal_user_id', user.id).single()
-            if (!t) { router.push('/tenant/login'); return }
+            if (!t) return
 
             const { data } = await supabase
                 .from('rent_payments')
@@ -43,7 +43,7 @@ export default function TenantRentPage() {
             setLoading(false)
         }
         load()
-    }, [supabase, router])
+    }, [supabase])
 
     const years = [...new Set(payments.map(p => new Date(p.due_date).getFullYear()))].sort((a, b) => b - a)
     const yearOptions = years.map(y => ({ value: String(y), label: String(y) }))
@@ -55,7 +55,7 @@ export default function TenantRentPage() {
 
     if (loading) return (
         <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: '#F3F4F6' }} />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: '#E8E7E3' }} />)}
         </div>
     )
 

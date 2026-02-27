@@ -55,10 +55,10 @@ export default function TenantLeasePage() {
     useEffect(() => {
         async function load() {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) { router.push('/tenant/login'); return }
+            if (!user) return
 
             const { data: t } = await supabase.from('tenants').select('id').eq('portal_user_id', user.id).single()
-            if (!t) { router.push('/tenant/login'); return }
+            if (!t) return
 
             const { data } = await supabase
                 .from('leases')
@@ -72,7 +72,7 @@ export default function TenantLeasePage() {
             setLoading(false)
         }
         load()
-    }, [supabase, router])
+    }, [supabase])
 
     async function downloadDoc() {
         if (!lease?.document_url) return
@@ -104,8 +104,8 @@ export default function TenantLeasePage() {
 
     if (loading) return (
         <div className="space-y-4">
-            <div className="h-8 w-32 rounded-lg animate-pulse" style={{ background: '#F3F4F6' }} />
-            <div className="h-64 rounded-2xl animate-pulse" style={{ background: '#F3F4F6' }} />
+            <div className="h-8 w-32 rounded-lg animate-pulse" style={{ background: '#E8E7E3' }} />
+            <div className="h-64 rounded-2xl animate-pulse" style={{ background: '#E8E7E3' }} />
         </div>
     )
 

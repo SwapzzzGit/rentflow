@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Home, DollarSign, Wrench, FileText, LogOut, Menu, X } from 'lucide-react'
+import type { Session } from '@supabase/supabase-js'
 
 const NAV = [
     { href: '/tenant/dashboard', label: 'Dashboard', icon: Home },
@@ -20,38 +21,64 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     const [tenantName, setTenantName] = useState('')
     const [mobileOpen, setMobileOpen] = useState(false)
 
+    // undefined = still checking, null = no session, Session = authed
+    const [session, setSession] = useState<Session | null | undefined>(undefined)
+
     useEffect(() => {
-        async function load() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) { router.push('/tenant/login'); return }
-            // Fetch tenant name linked to this user
-            const { data } = await supabase
-                .from('tenants')
-                .select('full_name')
-                .eq('portal_user_id', user.id)
-                .single()
-            if (data) setTenantName(data.full_name)
-        }
-        load()
-    }, [supabase, router])
+        // 1. Get current session immediately
+        supabase.auth.getSession().then(({ data }) => {
+            setSession(data.session ?? null)
+        })
+
+        // 2. Keep in sync with any auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+            setSession(s ?? null)
+        })
+
+        return () => subscription.unsubscribe()
+    }, [supabase])
+
+    // Load tenant name once session is confirmed
+    useEffect(() => {
+        if (!session) return
+        supabase
+            .from('tenants')
+            .select('full_name')
+            .eq('portal_user_id', session.user.id)
+            .single()
+            .then(({ data }) => { if (data) setTenantName(data.full_name) })
+    }, [session, supabase])
 
     async function signOut() {
         await supabase.auth.signOut()
         router.push('/tenant/login')
     }
 
+    // ── Still checking: show blank screen – do NOT redirect yet ──
+    if (session === undefined) {
+        return <div className="min-h-screen" style={{ background: '#F5F4F0' }} />
+    }
+
+    // ── Definitely no session: now redirect ──
+    if (session === null) {
+        router.replace('/tenant/login')
+        return null
+    }
+
     const initials = tenantName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
     return (
-        <div className="min-h-screen" style={{ background: 'var(--dash-bg, #F8F8FB)', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}>
+        <div className="min-h-screen" style={{ background: '#F5F4F0' }}>
             {/* ── Top Navbar ── */}
-            <header className="sticky top-0 z-40 w-full" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E9EBF0' }}>
+            <header className="sticky top-0 z-40 w-full" style={{ background: 'white', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                 <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
                     {/* Logo */}
                     <Link href="/tenant/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: '#E8392A' }}>R</div>
-                        <span className="text-sm font-bold" style={{ color: '#111' }}>RentFlow</span>
-                        <span className="text-xs px-1.5 py-0.5 rounded-md font-medium ml-1" style={{ background: 'rgba(232,57,42,0.1)', color: '#E8392A' }}>Tenant</span>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ background: '#E8392A' }}>
+                            <Home className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-bold" style={{ color: '#0A0A0A', fontFamily: 'var(--font-serif)' }}>RentFlow</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(232,57,42,0.1)', color: '#E8392A' }}>Tenant</span>
                     </Link>
 
                     {/* Desktop nav */}
@@ -62,11 +89,12 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
                                 <Link
                                     key={href}
                                     href={href}
-                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-                                    style={{ background: active ? 'rgba(232,57,42,0.08)' : 'transparent', color: active ? '#E8392A' : '#6B7280' }}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all relative"
+                                    style={{ color: active ? '#E8392A' : '#6B7280' }}
                                 >
                                     <Icon className="w-4 h-4" />
                                     {label}
+                                    {active && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full" style={{ background: '#E8392A' }} />}
                                 </Link>
                             )
                         })}
@@ -80,7 +108,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
                                 <span className="text-sm font-medium" style={{ color: '#374151' }}>{tenantName.split(' ')[0]}</span>
                             </div>
                         )}
-                        <button onClick={signOut} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:bg-gray-100" style={{ color: '#6B7280' }}>
+                        <button onClick={signOut} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:text-red-500" style={{ color: '#9CA3AF' }}>
                             <LogOut className="w-4 h-4" /> Sign out
                         </button>
                         {/* Mobile hamburger */}
@@ -92,7 +120,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
 
                 {/* Mobile slide-down menu */}
                 {mobileOpen && (
-                    <div className="md:hidden border-t px-4 py-3 space-y-1" style={{ borderColor: '#E9EBF0', background: 'white' }}>
+                    <div className="md:hidden border-t px-4 py-3 space-y-1" style={{ borderColor: 'rgba(0,0,0,0.06)', background: 'white' }}>
                         {NAV.map(({ href, label, icon: Icon }) => {
                             const active = pathname === href
                             return (
@@ -108,7 +136,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
                                 </Link>
                             )
                         })}
-                        <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mt-1" style={{ color: '#E8392A', borderTop: '1px solid #F3F4F6' }}>
+                        <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mt-1 hover:text-red-500 transition-colors" style={{ color: '#9CA3AF', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                             <LogOut className="w-4 h-4" /> Sign out
                         </button>
                     </div>
@@ -121,7 +149,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
             </main>
 
             {/* ── Mobile bottom nav ── */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex" style={{ background: 'white', borderTop: '1px solid #E9EBF0' }}>
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex" style={{ background: 'white', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                 {NAV.map(({ href, label, icon: Icon }) => {
                     const active = pathname === href
                     return (
@@ -137,7 +165,6 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
                     )
                 })}
             </nav>
-            {/* Spacer for mobile bottom nav */}
             <div className="md:hidden h-16" />
         </div>
     )
