@@ -36,19 +36,13 @@ export default function TenantLoginPage() {
         return null
     }
 
-    async function handleLogin(e: React.FormEvent) {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!email || !password) { toast.error('Please enter email and password'); return }
         setLoading(true)
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) { toast.error(error.message); setLoading(false); return }
         router.push('/tenant/dashboard')
-    }
-
-    const inputStyle = {
-        background: 'rgba(255,255,255,0.05)',
-        border: '1.5px solid rgba(255,255,255,0.08)',
-        color: '#fff',
     }
 
     return (
@@ -80,6 +74,7 @@ export default function TenantLoginPage() {
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>Email address</label>
                             <input
+                                key="login-email"
                                 type="email"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
@@ -93,6 +88,7 @@ export default function TenantLoginPage() {
                             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>Password</label>
                             <div className="relative">
                                 <input
+                                    key="login-password"
                                     type={showPw ? 'text' : 'password'}
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
@@ -140,4 +136,10 @@ export default function TenantLoginPage() {
             </div>
         </div>
     )
+}
+
+const inputStyle = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1.5px solid rgba(255,255,255,0.08)',
+    color: '#fff',
 }

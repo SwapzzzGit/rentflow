@@ -6,6 +6,25 @@ import { createClient } from '@/lib/supabase/client'
 import { Home, Lock, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// Shared dark page shell with red glow
+const Shell = ({ children }: { children: React.ReactNode }) => (
+    <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+            background: '#080808',
+            backgroundImage: 'radial-gradient(ellipse 70% 40% at 50% -5%, rgba(232,57,42,0.12) 0%, transparent 60%)',
+        }}
+    >
+        {children}
+    </div>
+)
+
+const inputStyle = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1.5px solid rgba(255,255,255,0.08)',
+    color: '#fff',
+}
+
 export default function SetPasswordPage() {
     const supabase = createClient()
     const router = useRouter()
@@ -60,7 +79,7 @@ export default function SetPasswordPage() {
             subscription.unsubscribe()
             clearTimeout(timer)
         }
-    }, [supabase.auth, sessionReady])
+    }, [supabase, sessionReady])
 
     const handleSetPassword = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -78,19 +97,6 @@ export default function SetPasswordPage() {
             setSubmitting(false)
         }
     }
-
-    // Shared dark page shell with red glow
-    const Shell = ({ children }: { children: React.ReactNode }) => (
-        <div
-            className="min-h-screen flex items-center justify-center p-4"
-            style={{
-                background: '#080808',
-                backgroundImage: 'radial-gradient(ellipse 70% 40% at 50% -5%, rgba(232,57,42,0.12) 0%, transparent 60%)',
-            }}
-        >
-            {children}
-        </div>
-    )
 
     if (verifying) {
         return (
@@ -140,12 +146,6 @@ export default function SetPasswordPage() {
         )
     }
 
-    const inputStyle = {
-        background: 'rgba(255,255,255,0.05)',
-        border: '1.5px solid rgba(255,255,255,0.08)',
-        color: '#fff',
-    }
-
     return (
         <Shell>
             <div className="w-full max-w-sm">
@@ -177,6 +177,7 @@ export default function SetPasswordPage() {
                                     <Lock className="w-4 h-4" style={{ color: '#6B7280' }} />
                                 </div>
                                 <input
+                                    key="password-input"
                                     type={showPassword ? 'text' : 'password'}
                                     required
                                     minLength={8}
@@ -199,6 +200,7 @@ export default function SetPasswordPage() {
                                     <Lock className="w-4 h-4" style={{ color: '#6B7280' }} />
                                 </div>
                                 <input
+                                    key="confirm-password-input"
                                     type={showPassword ? 'text' : 'password'}
                                     required
                                     minLength={8}

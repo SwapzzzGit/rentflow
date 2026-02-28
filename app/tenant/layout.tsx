@@ -32,7 +32,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
 
         // 2. Keep in sync with any auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-            setSession(s ?? null)
+            setSession(prev => (s?.user?.id === prev?.user?.id ? prev : (s ?? null)))
         })
 
         return () => subscription.unsubscribe()

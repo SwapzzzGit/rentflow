@@ -31,12 +31,6 @@ export default function TenantForgotPasswordPage() {
         setLoading(false)
     }
 
-    const inputStyle = {
-        background: 'rgba(255,255,255,0.05)',
-        border: '1.5px solid rgba(255,255,255,0.08)',
-        color: '#fff',
-    }
-
     return (
         <div
             className="min-h-screen flex items-center justify-center p-4"
@@ -68,6 +62,7 @@ export default function TenantForgotPasswordPage() {
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>Email address</label>
                                     <input
+                                        key="forgot-password-email"
                                         type="email"
                                         value={email}
                                         onChange={e => setEmail(e.target.value)}
@@ -115,4 +110,10 @@ export default function TenantForgotPasswordPage() {
             </div>
         </div>
     )
+}
+
+const inputStyle = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1.5px solid rgba(255,255,255,0.08)',
+    color: '#fff',
 }
