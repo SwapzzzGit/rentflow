@@ -1,0 +1,421 @@
+{
+    "project_overview": {
+        "app_name": "RentFlow",
+        "problem_solved": "Landlords juggle 5+ tools to manage properties — spreadsheets for rent, WhatsApp for maintenance, email for leases, bank apps for payments, Google Docs for expenses. RentFlow replaces all of them in one app.",
+        "target_user": "Small to mid-size landlords in the US, UK, and Australia who own 1-20 properties",
+        "how_it_works_in_one_line": "Landlords sign up, add properties and tenants, then track rent, maintenance, expenses, and leases from one dashboard — tenants get their own portal to view rent history, maintenance, and lease details."
+    },
+    "tech_stack_explained": {
+        "frontend_framework": {
+            "name": "Next.js 16 (App Router)",
+            "why_chosen": "It gives us both a React frontend AND a backend (API routes) in one project. No need for a separate Express server.",
+            "what_it_does_in_this_project": "Powers every page in the app — the landing page, dashboard, tenant portal, and all API endpoints like /api/tenant/invite and /api/leases/create",
+            "beginner_explanation": "Think of Next.js as React with superpowers. It handles routing automatically based on your folder structure. If you create app/dashboard/page.tsx, the URL /dashboard automatically works."
+        },
+        "language": {
+            "name": "TypeScript",
+            "why_chosen": "Catches bugs at compile time before they reach users. Especially important when working with database types.",
+            "beginner_explanation": "TypeScript is JavaScript with types. Instead of writing `let name = 'John'`, you write `let name: string = 'John'`. This tells your editor what shape your data is and it warns you instantly if you make a mistake."
+        },
+        "styling": {
+            "name": "Tailwind CSS v4 + Vanilla CSS variables",
+            "why_chosen": "Tailwind provides utility classes for fast layout. CSS variables (like --dash-bg, --dash-text) handle the dark/light theme switching so colors change automatically.",
+            "beginner_explanation": "Instead of writing separate CSS files, Tailwind lets you add classes directly in your HTML: className='text-sm font-bold rounded-xl'. CSS variables are like named colour slots that change value when you switch themes."
+        },
+        "backend_and_database": {
+            "name": "Supabase (PostgreSQL)",
+            "why_chosen": "Supabase gives you a full PostgreSQL database, authentication, file storage, and an auto-generated REST API — all for free on the starter plan. No backend server to maintain.",
+            "what_it_handles": "Stores all data (properties, tenants, rent, expenses, leases, maintenance tickets). Auth handles login/signup. Storage holds receipt images and lease PDFs.",
+            "beginner_explanation": "Supabase is like Firebase but uses real SQL databases. You create tables in their dashboard, and they give you JavaScript functions to read and write data: supabase.from('properties').select('*')"
+        },
+        "authentication": {
+            "name": "Supabase Auth + @supabase/ssr",
+            "how_it_works": "Users sign up with email/password or Google OAuth. Supabase creates a session stored in cookies. The middleware.ts file checks every request — if no session and URL starts with /dashboard, it redirects to /login.",
+            "beginner_explanation": "Authentication is how the app knows WHO you are. When you log in, Supabase stores a token (like a badge) in your browser's cookies. Every time you visit a page, the app checks if you have that badge. If not, it sends you to the login page."
+        },
+        "file_storage": {
+            "name": "Supabase Storage",
+            "what_we_store": "Receipt images for expenses and maintenance tickets, PDF lease documents",
+            "beginner_explanation": "Just like Google Drive stores your files, Supabase Storage stores uploaded files. Files are private by default — you generate a short-lived signed URL to let someone view them: supabase.storage.from('receipts').createSignedUrl(path, 3600)"
+        },
+        "email": {
+            "name": "Resend",
+            "what_it_does": "Sends tenant portal invite emails when landlord invites a tenant",
+            "beginner_explanation": "Resend is an email API. You call resend.emails.send({ to, subject, html }) from your API route and it delivers the email. Requires RESEND_API_KEY in your .env.local"
+        },
+        "deployment": {
+            "name": "Vercel (also supports Netlify)",
+            "how_it_works": "You push code to GitHub. Vercel auto-detects it is a Next.js project and deploys it. Environment variables are set in the Vercel dashboard.",
+            "beginner_explanation": "Vercel is like a web host that understands Next.js perfectly. You connect your GitHub repo and every git push automatically redeploys your app in about 30 seconds."
+        }
+    },
+    "folder_structure": {
+        "root_files": [
+            {
+                "file": "middleware.ts",
+                "purpose": "Runs on EVERY request before the page loads. Checks session and redirects unauthenticated users away from /dashboard and /tenant protected routes.",
+                "beginner_explanation": "Think of it as a security guard at the door. Every visitor must show their badge (session cookie) before entering the dashboard."
+            },
+            {
+                "file": "next.config.mjs",
+                "purpose": "Next.js configuration. Currently minimal — just enables the framework defaults.",
+                "beginner_explanation": "Configuration file for Next.js settings like allowed image domains, environment variables, etc."
+            },
+            {
+                "file": "package.json",
+                "purpose": "Lists all npm dependencies and scripts. Run npm run dev to start local server.",
+                "beginner_explanation": "Like a shopping list for your project. All the libraries you use are listed here. When someone clones your project, they run npm install and this file tells npm what to download."
+            },
+            {
+                "file": ".env.local",
+                "purpose": "Stores secret keys that should never be committed to GitHub. Supabase URL/keys, Stripe keys, Resend API key, App URL, Cron secret.",
+                "beginner_explanation": "Environment variables are like private passwords your app uses. Never share this file or commit it to GitHub. Add it to .gitignore."
+            },
+            {
+                "file": "tsconfig.json",
+                "purpose": "TypeScript configuration. Sets @ as an alias for the project root so you can write @/components instead of ../../components",
+                "beginner_explanation": "The @ alias saves you from writing ugly relative import paths like ../../../lib/supabase/client and lets you write @/lib/supabase/client instead."
+            },
+            {
+                "file": "vercel.json",
+                "purpose": "Configures Vercel deployment, including cron job schedules for lease expiry checks and rent reminders.",
+                "beginner_explanation": "Tells Vercel to run certain API routes on a schedule (like a timer). For example, check for expiring leases every night at midnight."
+            },
+            {
+                "file": "netlify.toml",
+                "purpose": "Configures Netlify deployment as an alternative to Vercel.",
+                "beginner_explanation": "If you deploy to Netlify instead of Vercel, this file tells Netlify how to build and run your Next.js app."
+            }
+        ],
+        "app_folder": [
+            {
+                "folder_or_file": "app/layout.tsx",
+                "route_it_creates": "Root wrapper for ALL pages",
+                "purpose": "Sets up fonts (DM Sans, Bricolage Grotesque, JetBrains Mono), global meta tags, Vercel Analytics, and the react-hot-toast notification system. Also injects anti-flash theme script.",
+                "beginner_explanation": "This is the HTML shell that wraps every single page. Whatever you put here shows on EVERY page. Great for things like fonts, toast notifications, and analytics."
+            },
+            {
+                "folder_or_file": "app/page.tsx",
+                "route_it_creates": "/  (landing page)",
+                "purpose": "The public marketing landing page. Shows hero, features, pricing, testimonials. Imports components from components/.",
+                "beginner_explanation": "The first page visitors see before signing up. It's a pure marketing page with no authentication."
+            },
+            {
+                "folder_or_file": "app/globals.css",
+                "route_it_creates": "N/A (global styles)",
+                "purpose": "All CSS custom properties (variables) for the dashboard theme: --dash-bg, --dash-card-bg, --dash-text, --dash-muted, badge colors. Both .light and .dark class variants defined here.",
+                "beginner_explanation": "This is where all the colour variables live. When you switch to dark mode, the .dark class activates and all the --dash-* variables change to dark values automatically."
+            },
+            {
+                "folder_or_file": "app/login/page.tsx",
+                "route_it_creates": "/login",
+                "purpose": "Email/password login form. Calls supabase.auth.signInWithPassword(). Also has Google OAuth button.",
+                "beginner_explanation": "The login page. When submitted, it calls Supabase auth and if successful, the middleware allows access to /dashboard."
+            },
+            {
+                "folder_or_file": "app/signup/page.tsx",
+                "route_it_creates": "/signup",
+                "purpose": "New account creation. Calls supabase.auth.signUp() with email and password.",
+                "beginner_explanation": "Sign up creates a new user in Supabase Auth. A profiles row is also created automatically via a database trigger or the useProfile hook."
+            },
+            {
+                "folder_or_file": "app/forgot-password/page.tsx",
+                "route_it_creates": "/forgot-password",
+                "purpose": "Sends a password reset email via supabase.auth.resetPasswordForEmail()",
+                "beginner_explanation": "User enters their email, Supabase sends a reset link. The link redirects to a page where they set a new password."
+            },
+            {
+                "folder_or_file": "app/auth/callback/route.ts",
+                "route_it_creates": "/auth/callback",
+                "purpose": "Handles OAuth redirect from Google. Exchanges the code for a session and redirects to /dashboard.",
+                "beginner_explanation": "After Google login, Google sends the user back to this URL with a code. This route exchanges that code for a real Supabase session and sends user to the dashboard."
+            },
+            {
+                "folder_or_file": "app/blog/",
+                "route_it_creates": "/blog and /blog/[slug]",
+                "purpose": "Static blog pages. Content defined in lib/blog-posts.ts as hardcoded objects.",
+                "beginner_explanation": "Static blog powered by hardcoded data — no CMS needed. Good for SEO content like 'How to manage rental properties'."
+            },
+            {
+                "folder_or_file": "app/dashboard/layout.tsx",
+                "route_it_creates": "Wrapper for all /dashboard/* pages",
+                "purpose": "The entire sidebar navigation, mobile bottom nav, mobile profile drawer, theme toggle, and user profile display. Wraps children in ProfileProvider context.",
+                "beginner_explanation": "This is the shell of the landlord dashboard. The sidebar with all navigation links only needs to be written once here. Every sub-page (properties, tenants, etc.) automatically gets the sidebar."
+            },
+            {
+                "folder_or_file": "app/dashboard/page.tsx",
+                "route_it_creates": "/dashboard",
+                "purpose": "Overview dashboard. Shows monthly rent stats, recent rent activity table, recent expenses, and maintenance summary. Uses Promise.all() to fetch 3 data sources simultaneously.",
+                "beginner_explanation": "The home screen after login. It fetches data from 3 tables in parallel (rent_payments, expenses, maintenance_tickets) to show a quick summary of what's happening."
+            },
+            {
+                "folder_or_file": "app/dashboard/properties/page.tsx",
+                "route_it_creates": "/dashboard/properties",
+                "purpose": "CRUD for properties. Fetches from properties table, opens a SlidePanel for add/edit, has inline delete confirmation.",
+                "beginner_explanation": "Shows all your properties as cards. Add/Edit opens a side drawer form. Delete shows a confirmation message inline on the card."
+            },
+            {
+                "folder_or_file": "app/dashboard/tenants/page.tsx",
+                "route_it_creates": "/dashboard/tenants",
+                "purpose": "CRUD for tenants. Each tenant has a profile picture initial, status badge, linked property. Clicking a tenant card navigates to the tenant detail page.",
+                "beginner_explanation": "Shows all tenants as a list/grid. Clicking opens a detailed profile page where you can edit their info, see their rent history, and invite them to the tenant portal."
+            },
+            {
+                "folder_or_file": "app/dashboard/tenants/[id]/page.tsx",
+                "route_it_creates": "/dashboard/tenants/:id",
+                "purpose": "Individual tenant detail page. Shows all tenant info, their rent history, maintenance tickets, active lease, and a Tenant Portal Access card to send an invite.",
+                "beginner_explanation": "The [id] in the folder name is a dynamic route. The id comes from the URL and Supabase uses it to fetch that specific tenant's data."
+            },
+            {
+                "folder_or_file": "app/dashboard/rent/page.tsx",
+                "route_it_creates": "/dashboard/rent",
+                "purpose": "Month-by-month rent tracker. Auto-generates rent rows for all active tenants when visiting a new month. Mark as paid with date + note. Undo payment. Export CSV.",
+                "beginner_explanation": "When you open this page for a new month, it automatically creates rent records for all your active tenants so you never have to manually create them. You just mark who paid."
+            },
+            {
+                "folder_or_file": "app/dashboard/maintenance/page.tsx",
+                "route_it_creates": "/dashboard/maintenance",
+                "purpose": "Maintenance ticket list with tabs (All/Open/In Progress/Fixed), filters by property/priority/raiser. Create new ticket via SlidePanel. Click card to open detail page.",
+                "beginner_explanation": "Think of it like a helpdesk for your properties. Each issue gets a ticket with priority (high/medium/low), category, and status tracking."
+            },
+            {
+                "folder_or_file": "app/dashboard/maintenance/[id]/page.tsx",
+                "route_it_creates": "/dashboard/maintenance/:id",
+                "purpose": "Maintenance ticket detail. Update status, add resolution notes, upload receipt, set cost. Resolving a ticket automatically creates an expense record.",
+                "beginner_explanation": "When you fix an issue and upload a receipt with a cost, the system automatically creates an expense entry for you — no double data entry needed."
+            },
+            {
+                "folder_or_file": "app/dashboard/expenses/page.tsx",
+                "route_it_creates": "/dashboard/expenses",
+                "purpose": "Expense tracking with PDF export. Receipt viewer modal uses Supabase signed URLs. Filter by property/category. Stats: total, this month, top category.",
+                "beginner_explanation": "All your property costs in one place. You can upload receipts and view them in a glassmorphism modal. The export button generates a professional PDF report using jsPDF."
+            },
+            {
+                "folder_or_file": "app/dashboard/leases/page.tsx",
+                "route_it_creates": "/dashboard/leases",
+                "purpose": "Lease management with signing workflow. Shows days remaining, expiry warnings for leases under 60 days, status filters. Send for digital signing via API.",
+                "beginner_explanation": "Tracks lease agreements. Shows a countdown of days remaining. Yellow warning appears for leases expiring in under 60 days. Supports a full digital signing flow."
+            },
+            {
+                "folder_or_file": "app/dashboard/leases/[id]/page.tsx",
+                "route_it_creates": "/dashboard/leases/:id",
+                "purpose": "Lease detail with digital signature canvas. Landlord signs → status becomes pending_tenant. Tenant signs via portal → status becomes signed.",
+                "beginner_explanation": "Uses react-signature-canvas so both landlord and tenant can draw their signature digitally. Both signatures are saved as image data in the database."
+            },
+            {
+                "folder_or_file": "app/dashboard/reports/page.tsx",
+                "route_it_creates": "/dashboard/reports",
+                "purpose": "Charts and analytics. Shows monthly rent collected vs expected as a bar chart using Recharts library.",
+                "beginner_explanation": "Recharts is a React charting library. You pass it data arrays and it renders interactive bar/line charts automatically."
+            },
+            {
+                "folder_or_file": "app/dashboard/settings/page.tsx",
+                "route_it_creates": "/dashboard/settings",
+                "purpose": "User profile settings (name, phone, company), preferences (timezone, currency, date format), email notification toggles, security (change password), and billing/plan info.",
+                "beginner_explanation": "Think of this as your account page. It reads from and writes to the profiles table in Supabase."
+            },
+            {
+                "folder_or_file": "app/tenant/layout.tsx",
+                "route_it_creates": "Wrapper for all /tenant/* pages",
+                "purpose": "Tenant portal navigation (Dashboard, Rent, Maintenance, Lease tabs). Has 3-state session check: undefined=loading, null=no session, Session=logged in. Redirects unauthenticated tenants to /tenant/login.",
+                "beginner_explanation": "The tenant portal has its own completely separate navigation from the landlord dashboard. It uses a 3-state auth check to prevent a flash of content before the session loads."
+            },
+            {
+                "folder_or_file": "app/tenant/login/page.tsx",
+                "route_it_creates": "/tenant/login",
+                "purpose": "Tenant-specific login page. Same Supabase auth but tenant users were created via the invite API (not self-signup).",
+                "beginner_explanation": "Tenants cannot self-register. They only get access if a landlord invites them. The invite creates their Supabase account and emails them a link to set their password."
+            },
+            {
+                "folder_or_file": "app/tenant/dashboard/page.tsx",
+                "route_it_creates": "/tenant/dashboard",
+                "purpose": "Tenant home screen. Shows their property address, current rent status, active lease dates, and recent maintenance tickets. Uses useTenantData hook.",
+                "beginner_explanation": "A simplified view for tenants — they only see THEIR data, not all properties. The useTenantData hook fetches the tenant record matching the logged-in user's portal_user_id."
+            },
+            {
+                "folder_or_file": "app/tenant/rent/page.tsx",
+                "route_it_creates": "/tenant/rent",
+                "purpose": "Tenant's rent payment history. Shows all rent_payments where tenant_id matches their tenant record.",
+                "beginner_explanation": "Tenants can see which months they paid, which are pending, and any overdue records — but they cannot edit anything."
+            },
+            {
+                "folder_or_file": "app/tenant/maintenance/page.tsx",
+                "route_it_creates": "/tenant/maintenance",
+                "purpose": "Tenant can view and raise maintenance requests. New tickets are created with raised_by='tenant'.",
+                "beginner_explanation": "Tenants submit maintenance issues here. The landlord sees them in their dashboard's maintenance section with a 'Tenant' badge."
+            },
+            {
+                "folder_or_file": "app/tenant/lease/page.tsx",
+                "route_it_creates": "/tenant/lease",
+                "purpose": "Shows the tenant's active lease details — dates, rent amount, property address.",
+                "beginner_explanation": "Read-only lease viewer for tenants so they always know their lease terms without having to ask the landlord."
+            },
+            {
+                "folder_or_file": "app/tenant/lease/sign/page.tsx",
+                "route_it_creates": "/tenant/lease/sign",
+                "purpose": "Tenant digital signature page. Shows lease document, lets tenant draw signature, submits to API to mark lease as signed.",
+                "beginner_explanation": "After the landlord sends a lease for signing, the tenant comes here to review the terms and draw their signature."
+            },
+            {
+                "folder_or_file": "app/tenant/set-password/page.tsx",
+                "route_it_creates": "/tenant/set-password",
+                "purpose": "Page where newly invited tenants set their password for the first time. Linked from the invite email.",
+                "beginner_explanation": "When a tenant accepts an invite, the email link brings them here. They set a password and then can log in normally going forward."
+            },
+            {
+                "folder_or_file": "app/api/tenant/invite/route.ts",
+                "route_it_creates": "POST /api/tenant/invite",
+                "purpose": "Creates a Supabase auth user for the tenant using the admin client (service role key), sets portal_user_id on the tenant record, sends invite email via Resend.",
+                "beginner_explanation": "This is a server-side API route. It uses the service role key (which has admin privileges) to create a user account for the tenant without requiring them to sign up themselves."
+            },
+            {
+                "folder_or_file": "app/api/leases/create/route.ts",
+                "route_it_creates": "POST /api/leases/create",
+                "purpose": "Creates a new lease. Handles DRAFT_LEASE_EXISTS conflict check — warns landlord if a draft lease already exists for this tenant/property combo.",
+                "beginner_explanation": "API routes in Next.js are just files named route.ts inside the api folder. They run on the server and can safely access secret environment variables like the Supabase service role key."
+            },
+            {
+                "folder_or_file": "app/api/leases/request-signing/route.ts",
+                "route_it_creates": "POST /api/leases/request-signing",
+                "purpose": "Changes lease status from draft to pending_landlord, sends email to landlord to sign first.",
+                "beginner_explanation": "The digital signing flow works in sequence: landlord creates lease → sends for signing → landlord signs first → status changes → tenant gets notified to sign."
+            },
+            {
+                "folder_or_file": "app/api/cron/lease-expiry/route.ts",
+                "route_it_creates": "GET /api/cron/lease-expiry",
+                "purpose": "Cron job that runs nightly. Finds leases expiring in 7, 30, or 60 days and sends warning emails. Protected by CRON_SECRET header.",
+                "beginner_explanation": "Vercel can call API routes on a schedule (like a cron job). This one runs every night and checks if any leases are about to expire, then sends email warnings."
+            },
+            {
+                "folder_or_file": "app/api/cron/rent-reminders/route.ts",
+                "route_it_creates": "GET /api/cron/rent-reminders",
+                "purpose": "Cron job that runs on the 1st of each month. Sends rent due reminders to tenants with portal access.",
+                "beginner_explanation": "Automatically emails tenants that their rent is due at the start of each month — no manual reminders needed."
+            },
+            {
+                "folder_or_file": "app/api/stripe/",
+                "route_it_creates": "/api/stripe/payment-intent, /api/stripe/connect/*, /api/stripe/webhook",
+                "purpose": "Stripe integration for online rent payment. Landlord connects their Stripe account via Stripe Connect. Tenant pays rent online. Webhook updates payment status.",
+                "beginner_explanation": "Stripe handles the actual money movement. Stripe Connect allows each landlord to receive payments directly to their own bank account rather than through RentFlow."
+            }
+        ],
+        "components_folder": [
+            {
+                "component": "components/ui/slide-panel.tsx",
+                "used_where": "Properties, Tenants, Rent, Maintenance, Expenses, Leases pages",
+                "purpose": "A right-side drawer panel that slides in for add/edit forms. Accepts isOpen, onClose, title, children props."
+            },
+            {
+                "component": "components/ui/status-badge.tsx",
+                "used_where": "Dashboard, Rent, Properties, Maintenance pages",
+                "purpose": "Coloured pill badge for statuses: paid (green), pending (yellow), overdue (red), active/inactive for properties, open/in-progress/fixed for maintenance."
+            },
+            {
+                "component": "components/ui/empty-state.tsx",
+                "used_where": "All feature pages when no data exists",
+                "purpose": "Centered icon + title + description + action button shown when a list is empty. Encourages user to add first item."
+            },
+            {
+                "component": "components/ui/confirm-delete.tsx",
+                "used_where": "Properties page",
+                "purpose": "Inline confirmation UI that shows 'Are you sure?' with Cancel and Delete buttons before destroying data."
+            },
+            {
+                "component": "components/ui/custom-select.tsx",
+                "used_where": "Maintenance, Expenses, Leases, Tenants pages",
+                "purpose": "A styled dropdown select component that matches the dashboard theme (dark/light variables)."
+            },
+            {
+                "component": "components/mobile-bottom-nav.tsx",
+                "used_where": "dashboard/layout.tsx",
+                "purpose": "Fixed bottom navigation bar that appears only on mobile screens (md:hidden). Shows icons for Dashboard, Properties, Tenants, Rent, Maintenance."
+            },
+            {
+                "component": "components/navbar.tsx",
+                "used_where": "Landing page",
+                "purpose": "Public marketing site top navigation with logo, links, and Get Started / Login buttons."
+            },
+            {
+                "component": "components/hero.tsx",
+                "used_where": "Landing page",
+                "purpose": "The big headline section of the landing page with CTA buttons and product preview image."
+            },
+            {
+                "component": "components/pricing.tsx",
+                "used_where": "Landing page",
+                "purpose": "Three pricing tier cards (Free, Pro, Enterprise) with feature lists and CTA buttons linking to /signup."
+            },
+            {
+                "component": "components/footer.tsx",
+                "used_where": "Landing page",
+                "purpose": "Site footer with links and copyright."
+            },
+            {
+                "component": "components/tenant/NoTenantFound.tsx",
+                "used_where": "Tenant portal pages",
+                "purpose": "Shown when a logged-in user has no matching tenant record (portal_user_id not found). Displays account setup incomplete message."
+            },
+            {
+                "component": "components/theme-provider.tsx",
+                "used_where": "Root layout",
+                "purpose": "Wraps children with next-themes ThemeProvider. Enables system/dark/light theme switching."
+            }
+        ],
+        "lib_folder": [
+            {
+                "file": "lib/supabase/client.ts",
+                "purpose": "Creates a Supabase browser client using createBrowserClient from @supabase/ssr. Used in all 'use client' components to query the database."
+            },
+            {
+                "file": "lib/supabase/server.ts",
+                "purpose": "Creates a Supabase server client using createServerClient. Reads cookies from Next.js headers. Used in Server Components and API routes."
+            },
+            {
+                "file": "lib/supabase/middleware.ts",
+                "purpose": "Helper for updating the session in middleware. Called from the root middleware.ts to refresh the user session cookie on every request."
+            },
+            {
+                "file": "lib/theme.ts",
+                "purpose": "Pure theme utility functions: getTheme(), applyTheme(), toggleTheme(), getEffectiveTheme(). Reads/writes to localStorage and applies dark/light class to document.documentElement."
+            },
+            {
+                "file": "lib/audit.ts",
+                "purpose": "Logs significant actions (lease status changes, tenant invites) to an audit_log table for compliance/history."
+            },
+            {
+                "file": "lib/email/resend.ts",
+                "purpose": "Contains sendTenantPortalInvite() function that calls the Resend API to send invite emails to tenants with their login link."
+            },
+            {
+                "file": "lib/utils.ts",
+                "purpose": "Contains cn() utility function (from clsx + tailwind-merge) for conditionally combining Tailwind CSS classes."
+            },
+            {
+                "file": "lib/blog-posts.ts",
+                "purpose": "Hardcoded array of blog post objects used to power the static /blog pages."
+            },
+            {
+                "file": "lib/get-client-info.ts",
+                "purpose": "Extracts IP address and user agent from incoming requests for audit logging purposes."
+            }
+        ],
+        "hooks_folder": [
+            {
+                "file": "hooks/useProfile.tsx",
+                "purpose": "React context + hook that fetches the landlord's profile from the profiles table. Provides profile (full_name, avatar_url, plan, etc.) and email to any component via useProfile()."
+            },
+            {
+                "file": "hooks/useTenantData.ts",
+                "purpose": "Fetches the tenant record from the tenants table where portal_user_id = current user's auth ID. Used in all tenant portal pages to get the tenant's own data."
+            },
+            {
+                "file": "hooks/use-mobile.ts",
+                "purpose": "Returns true/false whether the current viewport is mobile width (below 768px). Uses window.matchMedia."
+            },
+            {
+                "file": "hooks/use-toast.ts",
+                "purpose": "Toast notification hook from shadcn/ui (alternative to react-hot-toast used in some components)."
+            }
+        ]
+    }
+}

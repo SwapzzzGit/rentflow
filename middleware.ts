@@ -24,6 +24,12 @@ export async function middleware(request: NextRequest) {
 
     const { data: { session } } = await supabase.auth.getSession()
 
+    // ── Public landlord auth pages (no session required) ──────────────────────
+    const publicLandlordPages = ['/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback']
+    if (publicLandlordPages.some(p => pathname === p || pathname.startsWith(p + '?'))) {
+        return response
+    }
+
     // ── /dashboard/* ─────────────────────────────────────────────────────────
     if (pathname.startsWith('/dashboard')) {
         if (!session) {

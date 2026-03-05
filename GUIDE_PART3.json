@@ -1,0 +1,565 @@
+{
+    "build_order": {
+        "phase_1_setup": {
+            "phase_name": "Project Setup",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create a new Next.js project",
+                    "command_or_action": "npx create-next-app@latest rentflow --typescript --tailwind --app --no-src-dir",
+                    "why_this_first": "The project scaffold gives you the folder structure, tsconfig, and Tailwind config ready to go",
+                    "beginner_tip": "The --app flag enables the App Router (the modern way Next.js works). Say yes to all prompts."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Install all dependencies",
+                    "command_or_action": "npm install @supabase/ssr @supabase/supabase-js lucide-react react-hot-toast next-themes jspdf jspdf-autotable date-fns recharts zod react-hook-form @hookform/resolvers resend",
+                    "why_this_first": "Get all libraries installed before writing any code so imports work",
+                    "beginner_tip": "If a package is not found, check the exact name on npmjs.com"
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Create Supabase project at supabase.com",
+                    "command_or_action": "Go to supabase.com → New project → copy URL and anon key",
+                    "why_this_first": "You need the Supabase credentials before you can connect your app to any database",
+                    "beginner_tip": "Save the URL and anon key. The service role key is under Settings > API — keep it secret!"
+                },
+                {
+                    "step_number": 4,
+                    "what_to_do": "Create .env.local with all environment variables",
+                    "command_or_action": "Create file at project root with NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, NEXT_PUBLIC_APP_URL",
+                    "why_this_first": "Your app cannot connect to Supabase without these keys",
+                    "beginner_tip": "NEXT_PUBLIC_ prefix means it's safe to expose to the browser. Variables without it are server-only secrets."
+                },
+                {
+                    "step_number": 5,
+                    "what_to_do": "Create all database tables in Supabase SQL Editor",
+                    "command_or_action": "Run CREATE TABLE statements for: profiles, properties, tenants, rent_payments, maintenance_tickets, expenses, leases, audit_log",
+                    "why_this_first": "Data must exist before the app can read or write it",
+                    "beginner_tip": "In Supabase dashboard → SQL Editor → paste the CREATE TABLE SQL → Run. Then enable RLS and add policies for each table."
+                },
+                {
+                    "step_number": 6,
+                    "what_to_do": "Create lib/supabase/client.ts and lib/supabase/server.ts",
+                    "command_or_action": "Create the two Supabase client factory files as shown in the codebase",
+                    "why_this_first": "Every page needs to import these to connect to Supabase. Build these once, use everywhere.",
+                    "beginner_tip": "client.ts is for React components. server.ts is for API routes and server components."
+                },
+                {
+                    "step_number": 7,
+                    "what_to_do": "Create middleware.ts at project root",
+                    "command_or_action": "Write the session-checking middleware that protects /dashboard and /tenant routes",
+                    "why_this_first": "Without this, unauthenticated users could access any page by typing the URL directly",
+                    "beginner_tip": "The matcher array at the bottom tells Next.js which routes to apply the middleware to. Always exclude static files."
+                }
+            ]
+        },
+        "phase_2_landing_page": {
+            "phase_name": "Landing Page",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/globals.css with all CSS variable tokens",
+                    "command_or_action": "Define --dash-bg, --dash-card-bg, --dash-text, --dash-muted and all badge color variables for both .light and .dark themes",
+                    "why_this_first": "All dashboard components reference these variables. Build them once here.",
+                    "beginner_tip": "CSS variables cascade down — define them on :root or on .light/.dark classes applied to <html>."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create app/layout.tsx with fonts and global wrappers",
+                    "command_or_action": "Set up DM Sans, Bricolage Grotesque fonts from next/font/google. Add Toaster from react-hot-toast. Add anti-flash theme script.",
+                    "why_this_first": "This file wraps every page — set it up before building any pages",
+                    "beginner_tip": "The anti-flash script is a small inline JS that runs before React hydrates to apply the saved theme immediately. Without it, there is a white flash on dark mode page loads."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Build landing page components (hero, navbar, pricing, footer)",
+                    "command_or_action": "Create components/hero.tsx, components/navbar.tsx, components/pricing.tsx, components/footer.tsx",
+                    "why_this_first": "Landing page is the first thing users see — build it to test that the app runs",
+                    "beginner_tip": "Start with just static HTML. Add animations and styling after the basic structure works."
+                },
+                {
+                    "step_number": 4,
+                    "what_to_do": "Assemble app/page.tsx using the landing components",
+                    "command_or_action": "Import all landing sections and compose them into the page",
+                    "why_this_first": "Verify everything works end to end before adding auth",
+                    "beginner_tip": "Run npm run dev and visit localhost:3000 to see the landing page."
+                }
+            ]
+        },
+        "phase_3_authentication": {
+            "phase_name": "Authentication",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/signup/page.tsx with email/password form",
+                    "command_or_action": "Call supabase.auth.signUp({ email, password }) on submit",
+                    "why_this_first": "Users need accounts before anything else works",
+                    "beginner_tip": "Show a loading state while the request is in progress so users know something is happening."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create app/login/page.tsx with email/password form + Google button",
+                    "command_or_action": "Call supabase.auth.signInWithPassword() for email. supabase.auth.signInWithOAuth({ provider: 'google' }) for Google.",
+                    "why_this_first": "Without login, no one can access the dashboard",
+                    "beginner_tip": "After successful login, use router.push('/dashboard') to redirect. The middleware then validates the session on the next request."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Create app/auth/callback/route.ts for Google OAuth",
+                    "command_or_action": "Exchange code for session: supabase.auth.exchangeCodeForSession(code), then redirect to /dashboard",
+                    "why_this_first": "Google redirects back to this URL after OAuth. Without it, Google login breaks.",
+                    "beginner_tip": "This is a Route Handler (server-side). It must export a GET function."
+                },
+                {
+                    "step_number": 4,
+                    "what_to_do": "Create app/forgot-password/page.tsx",
+                    "command_or_action": "Call supabase.auth.resetPasswordForEmail(email, { redirectTo: '/reset-password' })",
+                    "why_this_first": "Users will forget passwords — build this early",
+                    "beginner_tip": "Supabase sends the reset email automatically. You just need to call the function."
+                },
+                {
+                    "step_number": 5,
+                    "what_to_do": "Create hooks/useProfile.tsx as a Context provider",
+                    "command_or_action": "Create ProfileContext, ProfileProvider, and useProfile hook. Fetch from profiles table on mount.",
+                    "why_this_first": "The dashboard layout needs the user's name, avatar, and plan to display in the sidebar",
+                    "beginner_tip": "Context providers share data with all child components without prop drilling. Wrap the dashboard layout with ProfileProvider."
+                }
+            ]
+        },
+        "phase_4_dashboard_layout": {
+            "phase_name": "Dashboard Layout and Sidebar",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/dashboard/layout.tsx with collapsible sidebar",
+                    "command_or_action": "Build sidebar with nav items array, active route detection, collapse animation using CSS max-width transition, mobile bottom nav import",
+                    "why_this_first": "Every dashboard page needs this shell. Build it once so all sub-pages inherit it automatically.",
+                    "beginner_tip": "The isActive function checks if pathname === route (exact match for /dashboard) or pathname.startsWith(route) for sub-pages like /dashboard/properties/123."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create components/mobile-bottom-nav.tsx",
+                    "command_or_action": "Fixed bottom bar with icons only, hidden on desktop with hidden md:flex",
+                    "why_this_first": "Mobile users need navigation since the sidebar is hidden on small screens",
+                    "beginner_tip": "Tailwind's md: prefix means 'apply this class only on screens wider than 768px'. hidden md:flex means: hidden on mobile, flex on desktop."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Create app/dashboard/page.tsx overview dashboard",
+                    "command_or_action": "Fetch rent_payments + expenses + maintenance_tickets in parallel with Promise.all(), compute stats, render stat cards and recent lists",
+                    "why_this_first": "This is the home screen after login — users should see useful data immediately",
+                    "beginner_tip": "Promise.all([...]) runs multiple async operations simultaneously instead of sequentially. Much faster than awaiting each one separately."
+                }
+            ]
+        },
+        "phase_5_properties": {
+            "phase_name": "Properties Feature",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create components/ui/slide-panel.tsx reusable drawer",
+                    "command_or_action": "Fixed right panel that slides in from the right. Accepts isOpen, onClose, title, children props.",
+                    "why_this_first": "Properties, tenants, maintenance, and expenses all use this same drawer pattern. Build it once.",
+                    "beginner_tip": "Use CSS transform: translateX(100%) when closed and translateX(0) when open with a transition for the slide animation."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create components/ui/status-badge.tsx and components/ui/empty-state.tsx",
+                    "command_or_action": "StatusBadge shows colored pills. EmptyState shows centered icon + message + action button.",
+                    "why_this_first": "Both are used on the properties page and every other feature page",
+                    "beginner_tip": "Build reusable components early before you start duplicating JSX across pages."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Create app/dashboard/properties/page.tsx",
+                    "command_or_action": "Fetch from properties table with .select('*, tenants(count)'). CRUD via SlidePanel for add/edit. ConfirmDelete inline on card.",
+                    "why_this_first": "Properties are the foundation — tenants and leases cannot exist without them",
+                    "beginner_tip": "The tenants(count) in the select query is a Supabase join that counts related tenants. It returns [{count: 3}] which you access via data.tenants?.[0]?.count"
+                }
+            ]
+        },
+        "phase_6_tenants": {
+            "phase_name": "Tenants Feature",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/dashboard/tenants/page.tsx — tenant list",
+                    "command_or_action": "Fetch tenants with property join. Show as cards. Avatar initials with random color from AVATAR_COLORS array.",
+                    "why_this_first": "Tenants need to exist before rent tracking, maintenance, or leases work",
+                    "beginner_tip": "The avatar_color is assigned randomly from a palette when creating a tenant: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]"
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create app/dashboard/tenants/[id]/page.tsx — tenant detail",
+                    "command_or_action": "Dynamic route. Fetch single tenant, their rent history, active lease, and maintenance tickets. Show portal access card.",
+                    "why_this_first": "Landlords need to see per-tenant details to manage effectively",
+                    "beginner_tip": "The [id] folder creates a dynamic route. Use useParams() to get the id from the URL, then query: .eq('id', id)"
+                }
+            ]
+        },
+        "phase_7_rent": {
+            "phase_name": "Rent Tracking Feature",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/dashboard/rent/page.tsx",
+                    "command_or_action": "Auto-generate rent rows on page load for current month. Month navigator (prev/next). Mark paid flow with inline form. Export CSV.",
+                    "why_this_first": "Rent tracking is the core feature of the app",
+                    "beginner_tip": "The auto-generation pattern: 1) fetch all active tenants, 2) fetch existing rent rows for this month, 3) find tenants missing a row, 4) insert missing rows. All in one page load."
+                }
+            ]
+        },
+        "phase_8_maintenance": {
+            "phase_name": "Maintenance Feature",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/dashboard/maintenance/page.tsx with tabs and filters",
+                    "command_or_action": "Tab bar for All/Open/In Progress/Fixed. CustomSelect filters. Card list with priority color border.",
+                    "why_this_first": "Build the list page first, detail page second",
+                    "beginner_tip": "Client-side filtering (no re-fetch): filter the already-fetched tickets array based on selected tab and filter values."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create app/dashboard/maintenance/[id]/page.tsx — ticket detail",
+                    "command_or_action": "Edit status, priority, add resolution notes, upload receipt to Supabase Storage, set cost and auto-create expense",
+                    "why_this_first": "The detail page is where most work happens",
+                    "beginner_tip": "Supabase Storage upload: supabase.storage.from('receipts').upload(path, file). The path is what you store in the DB. Generate a signed URL to display: supabase.storage.from('receipts').createSignedUrl(path, 3600)"
+                }
+            ]
+        },
+        "phase_9_expenses": {
+            "phase_name": "Expenses Feature",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/dashboard/expenses/page.tsx with PDF export",
+                    "command_or_action": "Fetch expenses with property join. Add expense SlidePanel. Receipt modal with signed URL. PDF export via jsPDF + jspdf-autotable.",
+                    "why_this_first": "Expenses link to properties and auto-create from maintenance resolution",
+                    "beginner_tip": "For PDF export: const doc = new jsPDF(); autoTable(doc, { head: [columns], body: rows }); doc.save('report.pdf'). Import jsPDF dynamically (await import('jspdf')) to avoid bundling it until needed."
+                }
+            ]
+        },
+        "phase_10_leases": {
+            "phase_name": "Leases Feature",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/dashboard/leases/page.tsx with signing workflow",
+                    "command_or_action": "Lease cards with days countdown. Filter pills. Expiry alert banner for leases < 60 days. Send for signing button.",
+                    "why_this_first": "Build the list first",
+                    "beginner_tip": "The days countdown: Math.ceil((new Date(end_date).getTime() - Date.now()) / 86400000). Negative = already expired."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create app/dashboard/leases/[id]/page.tsx with signature canvas",
+                    "command_or_action": "Install react-signature-canvas. Show lease terms, signature pad, save as base64 to landlord_signature column.",
+                    "why_this_first": "Digital signing makes leases legally manageable without printing",
+                    "beginner_tip": "sigCanvasRef.current.toDataURL() returns a base64 PNG string you can store in a text column and display with <img src={base64string}>."
+                }
+            ]
+        },
+        "phase_11_tenant_portal": {
+            "phase_name": "Tenant Portal",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create app/api/tenant/invite/route.ts server action",
+                    "command_or_action": "Use supabase admin client (service role) to create auth user, update portal_user_id, send email via Resend",
+                    "why_this_first": "Without the invite system, tenants cannot access the portal at all",
+                    "beginner_tip": "The admin client uses service role key: createClient(url, serviceRoleKey). This bypasses RLS — only use it in server-side API routes, NEVER in client components."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create hooks/useTenantData.ts custom hook",
+                    "command_or_action": "Fetch from tenants table WHERE portal_user_id = user.id, include properties join",
+                    "why_this_first": "Every tenant portal page needs the tenant's data. Build the hook once.",
+                    "beginner_tip": "Custom hooks start with 'use' and can use useState, useEffect inside them. They are just functions that return data."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Create app/tenant/layout.tsx with 3-state auth",
+                    "command_or_action": "useState<Session | null | undefined>(undefined). undefined=loading (blank screen), null=no session (redirect), Session=show portal",
+                    "why_this_first": "The layout wraps all tenant pages — auth must work here before building individual pages",
+                    "beginner_tip": "The 3-state pattern eliminates the flicker-then-redirect problem. Always start with undefined (loading) not false or null."
+                },
+                {
+                    "step_number": 4,
+                    "what_to_do": "Build all tenant portal pages",
+                    "command_or_action": "dashboard, rent, maintenance, lease, sign pages — all read-only except maintenance (can submit) and lease/sign (can sign)",
+                    "why_this_first": "Tenant portal pages are simpler than landlord pages — build them last",
+                    "beginner_tip": "Reuse the same Supabase query patterns but filter by tenant's own data via portal_user_id."
+                }
+            ]
+        },
+        "phase_12_deployment": {
+            "phase_name": "Deployment",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Push code to GitHub",
+                    "command_or_action": "git init, git add ., git commit -m 'initial', git push origin main",
+                    "why_this_first": "Vercel deploys from GitHub",
+                    "beginner_tip": "Make sure .env.local is in .gitignore — never commit your secret keys to GitHub."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Connect GitHub repo to Vercel",
+                    "command_or_action": "vercel.com → New Project → Import GitHub repo → Set environment variables",
+                    "why_this_first": "Vercel auto-deploys on every push",
+                    "beginner_tip": "Set all the same environment variables from .env.local in the Vercel dashboard under Project Settings > Environment Variables."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Add production URL to Supabase Auth redirect URLs",
+                    "command_or_action": "Supabase Dashboard → Authentication → URL Configuration → Add Site URL and redirect URLs",
+                    "why_this_first": "Supabase blocks OAuth and email redirects to URLs it doesn't know about",
+                    "beginner_tip": "Add both https://yourapp.vercel.app and https://yourapp.vercel.app/auth/callback to the allowed redirect URLs."
+                }
+            ]
+        }
+    },
+    "supabase_patterns_used": {
+        "fetch_data_pattern": {
+            "code": "const { data: { user } } = await supabase.auth.getUser()\nconst { data, error } = await supabase.from('properties').select('*, tenants(count)').eq('user_id', user.id).order('created_at', { ascending: false })",
+            "explanation": "Always get the user first. Then query with user_id filter (RLS handles this too, but explicit filter is good practice). Use .select('*') for all columns or specify columns. Use .order() to sort. The *, tenants(count) syntax fetches a count of related tenants in the same query."
+        },
+        "insert_data_pattern": {
+            "code": "const { error } = await supabase.from('properties').insert({ user_id: user.id, name: form.name, address: form.address, status: 'active' })",
+            "explanation": "Always include user_id in inserts. Check for error and show toast if it exists. If insert succeeds, call fetchData() to refresh the list."
+        },
+        "update_data_pattern": {
+            "code": "const { error } = await supabase.from('rent_payments').update({ status: 'paid', paid_date: today }).eq('id', rowId)",
+            "explanation": "Always filter with .eq('id', ...) or another specific filter when updating. Never update without a WHERE clause or you'll update all rows the user owns."
+        },
+        "delete_data_pattern": {
+            "code": "const { error } = await supabase.from('properties').delete().eq('id', propertyId)",
+            "explanation": "Same as update — always filter. RLS also prevents deleting other users' data, but your own filter prevents accidents."
+        },
+        "file_upload_pattern": {
+            "code": "const path = `${user.id}/receipts/${Date.now()}-receipt.${ext}`\nconst { error } = await supabase.storage.from('receipts').upload(path, file)\n// Store path in DB, not full URL\n// To display:\nconst { data } = await supabase.storage.from('receipts').createSignedUrl(storedPath, 3600)",
+            "explanation": "Upload files to a bucket with a unique path (user.id prefix prevents naming collisions). Store the PATH in the database. When displaying, generate a signed URL that expires in 3600 seconds (1 hour). Never store the full URL because signed URLs expire."
+        },
+        "get_current_user_pattern": {
+            "code": "// Client component:\nconst { data: { user } } = await supabase.auth.getUser()\n\n// Server component / API route:\nconst supabase = await createClient() // from lib/supabase/server.ts\nconst { data: { user } } = await supabase.auth.getUser()",
+            "explanation": "Always use getUser() for security-sensitive operations, not getSession(). getUser() validates the token against Supabase's servers. getSession() only reads the local cookie without server verification."
+        },
+        "parallel_fetch_pattern": {
+            "code": "const [{ data: tickets }, { data: properties }, { data: tenants }] = await Promise.all([\n  supabase.from('maintenance_tickets').select('*').eq('user_id', user.id),\n  supabase.from('properties').select('id, name').eq('user_id', user.id),\n  supabase.from('tenants').select('id, full_name').eq('user_id', user.id)\n])",
+            "explanation": "When you need data from multiple tables, use Promise.all() to fetch them simultaneously. This is 3x faster than awaiting each query one after another. Used in maintenance, leases, and the main dashboard page."
+        },
+        "realtime_pattern": {
+            "used": false,
+            "explanation": "RentFlow does not use Supabase Realtime subscriptions. Data is fetched on page load and on user actions (after save/update/delete, fetchData() is called again). This keeps the app simple. Realtime would be needed if multiple landlords/tenants needed to see live updates simultaneously."
+        }
+    },
+    "common_mistakes_to_avoid": {
+        "mistakes": [
+            {
+                "mistake": "Storing signed URLs in the database instead of file paths",
+                "what_went_wrong": "Signed URLs expire after the set duration (e.g. 1 hour). If you store the signed URL, it breaks after expiry. All receipt and lease document links would stop working.",
+                "how_it_was_fixed": "Store only the storage PATH in the database. Generate a fresh signed URL on demand using createSignedUrl(storedPath, 3600) each time the user wants to view the file.",
+                "lesson_learned": "Never store temporary URLs. Always store the stable path and generate URLs when needed."
+            },
+            {
+                "mistake": "Using getSession() instead of getUser() in API routes",
+                "what_went_wrong": "getSession() only reads the local cookie without server verification. An attacker could forge a cookie. API routes that used getSession() were not truly secure.",
+                "how_it_was_fixed": "All API routes and server components now use getUser() which validates against Supabase's auth servers on every call.",
+                "lesson_learned": "Always use getUser() for any security check. getSession() is fine for non-sensitive UI state."
+            },
+            {
+                "mistake": "Tenant portal showing login flash before redirecting",
+                "what_went_wrong": "Using null as the initial session state caused the portal to briefly show the login page even when a valid session existed, then flash to the dashboard. Bad user experience.",
+                "how_it_was_fixed": "Introduced a 3rd state: undefined as the initial value. While undefined, show a blank loading screen. Only redirect when state becomes definitively null.",
+                "lesson_learned": "Auth state is async. Always account for the loading state with a third value before making redirect decisions."
+            },
+            {
+                "mistake": "Generating rent rows in useEffect caused double-inserts",
+                "what_went_wrong": "React in dev mode runs effects twice (Strict Mode). The auto-generation of rent rows ran twice and created duplicate entries.",
+                "how_it_was_fixed": "The generation logic checks which tenant IDs already have rows (fetch existing first, find missing, insert only missing) — making it idempotent. Running it twice is safe.",
+                "lesson_learned": "Any database write in useEffect must be idempotent (safe to run multiple times). Always check if data exists before inserting."
+            },
+            {
+                "mistake": "CSS flash of wrong theme on page load (white flash in dark mode)",
+                "what_went_wrong": "React hydration applies the theme class after the JavaScript loads. The HTML is white by default, causing a visible flash before dark mode kicks in.",
+                "how_it_was_fixed": "Added a small inline <script> in app/layout.tsx that runs synchronously before React loads. It reads localStorage and applies the correct theme class immediately.",
+                "lesson_learned": "Anything that must happen before React renders needs to be a plain inline script in the HTML head, not a React useEffect."
+            },
+            {
+                "mistake": "RLS not enabled on tables caused data leakage in testing",
+                "what_went_wrong": "During early development, RLS was disabled for convenience. Any logged-in user could query all other users' properties.",
+                "how_it_was_fixed": "Enabled RLS on all tables and created proper policies: SELECT/INSERT/UPDATE/DELETE WHERE user_id = auth.uid()",
+                "lesson_learned": "Enable RLS from day one. The moment you go to production without RLS, every user can see every other user's data."
+            },
+            {
+                "mistake": "Using the service role key in client-side code",
+                "what_went_wrong": "The service role key bypasses ALL security including RLS. If exposed to the browser, anyone can read or delete the entire database.",
+                "how_it_was_fixed": "Service role key is only used in server-side API routes (app/api/*). It is never exposed as NEXT_PUBLIC_.",
+                "lesson_learned": "Never prefix SUPABASE_SERVICE_ROLE_KEY with NEXT_PUBLIC_. Only use it in route handlers and server components."
+            },
+            {
+                "mistake": "Sidebar width transition causing layout jumps on initial load",
+                "what_went_wrong": "Sidebar defaulted to open (width: 240px), but on SSR it had no localStorage value yet — causing a layout shift when the client hydrated and read the saved preference.",
+                "how_it_was_fixed": "Set suppressHydrationWarning on buttons that read localStorage. Read sidebar preference in useEffect (client only) not during server render.",
+                "lesson_learned": "Never read localStorage during server-side rendering. Always do it in useEffect or with suppressHydrationWarning on affected elements."
+            }
+        ]
+    },
+    "deployment_explained": {
+        "deployment_platform": "Vercel (primary). Netlify also configured via netlify.toml as alternative.",
+        "steps_to_deploy": [
+            "1. Create a GitHub repository and push your code (make sure .env.local is in .gitignore)",
+            "2. Go to vercel.com and click New Project",
+            "3. Import your GitHub repository",
+            "4. Set all environment variables in Vercel dashboard (Project Settings > Environment Variables)",
+            "5. Deploy — Vercel auto-detects Next.js and builds correctly",
+            "6. Go to Supabase dashboard > Authentication > URL Configuration",
+            "7. Add your Vercel URL as Site URL and add /auth/callback to redirect URLs",
+            "8. Set up cron jobs in vercel.json for lease expiry and rent reminders"
+        ],
+        "environment_variables": [
+            {
+                "variable_name": "NEXT_PUBLIC_SUPABASE_URL",
+                "where_to_get_it": "Supabase Dashboard > Project Settings > API > Project URL",
+                "what_it_does": "The URL of your Supabase project. Exposed to browser (NEXT_PUBLIC_) — safe to share."
+            },
+            {
+                "variable_name": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                "where_to_get_it": "Supabase Dashboard > Project Settings > API > anon public key",
+                "what_it_does": "The public API key. RLS protects the data — this key alone cannot access other users' data."
+            },
+            {
+                "variable_name": "SUPABASE_SERVICE_ROLE_KEY",
+                "where_to_get_it": "Supabase Dashboard > Project Settings > API > service_role key",
+                "what_it_does": "Admin key that bypasses RLS. Used only in server API routes for admin operations like creating tenant accounts."
+            },
+            {
+                "variable_name": "RESEND_API_KEY",
+                "where_to_get_it": "resend.com > API Keys",
+                "what_it_does": "Authenticates your app with the Resend email service for sending tenant invite emails."
+            },
+            {
+                "variable_name": "NEXT_PUBLIC_APP_URL",
+                "where_to_get_it": "Your Vercel production URL (e.g. https://rentflow.vercel.app)",
+                "what_it_does": "Used to construct absolute URLs in emails (e.g. the invite link in tenant emails)."
+            },
+            {
+                "variable_name": "STRIPE_SECRET_KEY",
+                "where_to_get_it": "Stripe Dashboard > Developers > API Keys",
+                "what_it_does": "Server-side Stripe key for creating payment intents and managing Stripe Connect accounts."
+            },
+            {
+                "variable_name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+                "where_to_get_it": "Stripe Dashboard > Developers > API Keys",
+                "what_it_does": "Client-side Stripe key for rendering the Stripe payment UI in the browser."
+            },
+            {
+                "variable_name": "STRIPE_WEBHOOK_SECRET",
+                "where_to_get_it": "Stripe Dashboard > Webhooks > your webhook > Signing secret",
+                "what_it_does": "Verifies that incoming webhook events actually came from Stripe and not a malicious actor."
+            },
+            {
+                "variable_name": "CRON_SECRET",
+                "where_to_get_it": "Make up any random string (e.g. rentflow_cron_2026)",
+                "what_it_does": "Vercel sends this header when calling cron job routes. The route checks it to prevent unauthorized calls."
+            }
+        ],
+        "supabase_redirect_urls_needed": [
+            "https://yourapp.vercel.app",
+            "https://yourapp.vercel.app/auth/callback",
+            "http://localhost:3000",
+            "http://localhost:3000/auth/callback"
+        ],
+        "beginner_tip": "Always test your environment variables work by checking the Vercel deployment logs. If you see 'supabaseUrl is required' errors, your env vars were not saved correctly in Vercel."
+    },
+    "concepts_to_learn": {
+        "must_know_before_starting": [
+            {
+                "concept": "React components and props",
+                "why_needed": "Every UI element in Next.js is a React component. Props pass data between parent and child components.",
+                "where_used_in_rentflow": "Every file in components/ exports a React component that accepts props like isOpen, onClose, children",
+                "learn_resource_suggestion": "react.dev official tutorial"
+            },
+            {
+                "concept": "React useState and useEffect hooks",
+                "why_needed": "useState manages data that changes over time (loaded rows, form values, loading states). useEffect runs code when data changes or on page load.",
+                "where_used_in_rentflow": "Every page uses useState for loading/data/form state and useEffect to trigger initial data fetch",
+                "learn_resource_suggestion": "react.dev/learn/state-a-components-memory"
+            },
+            {
+                "concept": "Async/await and Promises",
+                "why_needed": "All database calls and API requests are asynchronous. You must await them.",
+                "where_used_in_rentflow": "Every fetchData function, every handleSave function, every Supabase call uses async/await",
+                "learn_resource_suggestion": "javascript.info/async-await"
+            },
+            {
+                "concept": "TypeScript basic types",
+                "why_needed": "The entire project is TypeScript. You define types for your data shapes to prevent bugs.",
+                "where_used_in_rentflow": "type Property = { id: string; name: string; ... } defined at top of each page file",
+                "learn_resource_suggestion": "typescriptlang.org/docs/handbook/typescript-in-5-minutes.html"
+            },
+            {
+                "concept": "Next.js App Router basics (pages, layouts, routes)",
+                "why_needed": "The folder structure IS the routing system. Each page.tsx is a route. layout.tsx wraps sub-routes.",
+                "where_used_in_rentflow": "app/dashboard/properties/page.tsx → /dashboard/properties. app/dashboard/layout.tsx → wraps all /dashboard/* pages",
+                "learn_resource_suggestion": "nextjs.org/learn (official course)"
+            },
+            {
+                "concept": "SQL basics (SELECT, INSERT, UPDATE, DELETE, WHERE)",
+                "why_needed": "Supabase is a PostgreSQL database. Understanding basic SQL helps you understand what the Supabase JavaScript methods are doing.",
+                "where_used_in_rentflow": "supabase.from('table').select('*').eq('user_id', id) is equivalent to SELECT * FROM table WHERE user_id = id",
+                "learn_resource_suggestion": "sqlzoo.net"
+            }
+        ],
+        "learn_while_building": [
+            {
+                "concept": "React Context API",
+                "when_you_will_encounter_it": "When building useProfile.tsx (Phase 3). Context shares data across many components without prop drilling.",
+                "beginner_tip": "Create a context, wrap components in a Provider, use useContext() to read the data anywhere inside the Provider."
+            },
+            {
+                "concept": "Next.js dynamic routes ([id] folders)",
+                "when_you_will_encounter_it": "When building tenant detail page and maintenance ticket detail page.",
+                "beginner_tip": "The [id] folder creates a URL parameter. Use useParams() (client) or { params } (server) to access the ID value."
+            },
+            {
+                "concept": "Supabase Row Level Security (RLS)",
+                "when_you_will_encounter_it": "When you set up the database. Must enable RLS and add policies before the app is secure.",
+                "beginner_tip": "Enable RLS on a table in Supabase, then add a policy: FOR SELECT USING (auth.uid() = user_id). Repeat for INSERT, UPDATE, DELETE."
+            },
+            {
+                "concept": "Supabase Storage (file upload)",
+                "when_you_will_encounter_it": "When building receipt upload in maintenance and expenses.",
+                "beginner_tip": "Create a bucket in Supabase Storage. Make it private. Upload with .upload(path, file). Generate signed URLs with .createSignedUrl(path, seconds)."
+            },
+            {
+                "concept": "CSS Custom Properties (variables)",
+                "when_you_will_encounter_it": "When styling the dashboard with dark/light theme support.",
+                "beginner_tip": "Define --variable-name in :root {}. Use var(--variable-name) anywhere in CSS. Change the value in a .dark class to automatically restyle everything."
+            },
+            {
+                "concept": "Next.js API Route Handlers",
+                "when_you_will_encounter_it": "When building the tenant invite API and lease creation API.",
+                "beginner_tip": "Create a route.ts file inside app/api/whatever/. Export a named function for each HTTP method: export async function POST(request: Request) {}"
+            },
+            {
+                "concept": "Promise.all for parallel requests",
+                "when_you_will_encounter_it": "On the dashboard and maintenance pages that fetch from multiple tables.",
+                "beginner_tip": "const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]) runs all three simultaneously. Much faster than awaiting each separately."
+            }
+        ],
+        "learning_order": [
+            "1. Basic HTML and CSS",
+            "2. JavaScript fundamentals (variables, functions, arrays, objects)",
+            "3. Async JavaScript (callbacks, Promises, async/await)",
+            "4. React basics (components, props, useState, useEffect)",
+            "5. TypeScript basics (types, interfaces)",
+            "6. Next.js App Router (pages, layouts, dynamic routes, API routes)",
+            "7. SQL basics (SELECT, INSERT, UPDATE, DELETE, JOIN)",
+            "8. Supabase (auth, database queries, storage, RLS)",
+            "9. Tailwind CSS (utility classes, responsive prefixes like md:, dark:)",
+            "10. Advanced React (Context API, useCallback, useMemo, custom hooks)"
+        ]
+    }
+}

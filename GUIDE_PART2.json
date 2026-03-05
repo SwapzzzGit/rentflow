@@ -1,0 +1,656 @@
+{
+    "database_explained": {
+        "what_is_rls": "Row Level Security (RLS) is a PostgreSQL feature that filters which database rows a user can read or write, enforced at the database level — not in your app code.",
+        "why_rls_matters": "Even if a bug in your code tries to fetch another user's data, RLS blocks it at the database. Every table has policies like: 'user can only SELECT rows where user_id = auth.uid()'",
+        "tables": [
+            {
+                "table_name": "profiles",
+                "purpose": "Stores additional info about each landlord user beyond what Supabase Auth stores",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Matches auth.users.id exactly — this is the link between Auth and this table",
+                        "beginner_explanation": "Same ID as the user's Supabase Auth account. Used to join the two tables together."
+                    },
+                    {
+                        "column_name": "full_name",
+                        "data_type": "text",
+                        "purpose": "Landlord's full name, shown in sidebar",
+                        "beginner_explanation": "Simple text field. Filled in on signup or editable in Settings."
+                    },
+                    {
+                        "column_name": "phone",
+                        "data_type": "text",
+                        "purpose": "Contact phone number",
+                        "beginner_explanation": "Optional field stored as text, not validated as a phone number format."
+                    },
+                    {
+                        "column_name": "company_name",
+                        "data_type": "text",
+                        "purpose": "Property management company name if applicable",
+                        "beginner_explanation": "Optional — shown on lease documents."
+                    },
+                    {
+                        "column_name": "avatar_url",
+                        "data_type": "text",
+                        "purpose": "URL to profile picture (from Google OAuth or uploaded)",
+                        "beginner_explanation": "If user signed in with Google, this gets Google's profile picture URL automatically."
+                    },
+                    {
+                        "column_name": "timezone",
+                        "data_type": "text",
+                        "purpose": "User's timezone for date display",
+                        "beginner_explanation": "Default: UTC. User can change in Settings > Preferences."
+                    },
+                    {
+                        "column_name": "currency",
+                        "data_type": "text",
+                        "purpose": "Default currency for rent amounts (USD, GBP, AUD...)",
+                        "beginner_explanation": "Just a display preference — the app shows $ or £ symbols based on this setting."
+                    },
+                    {
+                        "column_name": "plan",
+                        "data_type": "text",
+                        "purpose": "Subscription plan: free, pro, enterprise",
+                        "beginner_explanation": "Currently informational. Could gate features behind plan checks in the future."
+                    },
+                    {
+                        "column_name": "email_notifications",
+                        "data_type": "jsonb",
+                        "purpose": "JSON object of notification preferences: rent_due, maintenance_update, lease_expiry, payment_received",
+                        "beginner_explanation": "JSONB lets you store a whole object in one column. Example: {rent_due: true, lease_expiry: false}"
+                    }
+                ],
+                "connects_to": "auth.users (via id), indirectly to all other tables via user_id",
+                "rls_policy": "Users can only read and update their own profile row (WHERE id = auth.uid())",
+                "beginner_explanation": "Every landlord who signs up gets one row in this table. It's like a user settings table."
+            },
+            {
+                "table_name": "properties",
+                "purpose": "Stores each rental property owned by a landlord",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Unique identifier for this property",
+                        "beginner_explanation": "Auto-generated unique ID. Used as a foreign key in tenants, expenses, maintenance_tickets, leases."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "The landlord who owns this property. References auth.users.id",
+                        "beginner_explanation": "This is how RLS works — every query filters by user_id = auth.uid() so landlords only see their own properties."
+                    },
+                    {
+                        "column_name": "name",
+                        "data_type": "text",
+                        "purpose": "Property nickname (e.g. 'Oak Lane Apartment')",
+                        "beginner_explanation": "A friendly name chosen by the landlord. Not the full address."
+                    },
+                    {
+                        "column_name": "address",
+                        "data_type": "text",
+                        "purpose": "Street address",
+                        "beginner_explanation": "Required field."
+                    },
+                    {
+                        "column_name": "city",
+                        "data_type": "text",
+                        "purpose": "City name",
+                        "beginner_explanation": "Optional but useful for filtering."
+                    },
+                    {
+                        "column_name": "country",
+                        "data_type": "text",
+                        "purpose": "Country (United States, United Kingdom, Australia, etc.)",
+                        "beginner_explanation": "Used to determine relevant regulations and currency defaults."
+                    },
+                    {
+                        "column_name": "property_type",
+                        "data_type": "text",
+                        "purpose": "residential, commercial, apartment, house, studio",
+                        "beginner_explanation": "Stored lowercase."
+                    },
+                    {
+                        "column_name": "rent_amount",
+                        "data_type": "numeric",
+                        "purpose": "Default monthly rent for this property",
+                        "beginner_explanation": "When a new tenant is added, their rent_amount defaults to this value."
+                    },
+                    {
+                        "column_name": "currency",
+                        "data_type": "text",
+                        "purpose": "Currency for this property's rent (USD, GBP, AUD...)",
+                        "beginner_explanation": "Can differ per property — a landlord might own properties in two countries."
+                    },
+                    {
+                        "column_name": "status",
+                        "data_type": "text",
+                        "purpose": "active, inactive, or vacant",
+                        "beginner_explanation": "Shows as a colored badge on the property card."
+                    }
+                ],
+                "connects_to": "tenants (property_id), expenses (property_id), maintenance_tickets (property_id), leases (property_id)",
+                "rls_policy": "SELECT/INSERT/UPDATE/DELETE only where user_id = auth.uid()",
+                "beginner_explanation": "The central table of the app. Almost every other table references a property via property_id."
+            },
+            {
+                "table_name": "tenants",
+                "purpose": "Stores each tenant renting a property",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Unique tenant ID",
+                        "beginner_explanation": "Referenced by rent_payments, leases, maintenance_tickets."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "The landlord who manages this tenant",
+                        "beginner_explanation": "RLS filter: landlords only see their own tenants."
+                    },
+                    {
+                        "column_name": "property_id",
+                        "data_type": "uuid",
+                        "purpose": "Which property this tenant lives in",
+                        "beginner_explanation": "Foreign key to properties.id."
+                    },
+                    {
+                        "column_name": "full_name",
+                        "data_type": "text",
+                        "purpose": "Tenant's full name",
+                        "beginner_explanation": "Required field."
+                    },
+                    {
+                        "column_name": "email",
+                        "data_type": "text",
+                        "purpose": "Tenant's email — used to send portal invite",
+                        "beginner_explanation": "When landlord clicks 'Invite to Portal', this email receives the invitation."
+                    },
+                    {
+                        "column_name": "phone",
+                        "data_type": "text",
+                        "purpose": "Tenant's phone number",
+                        "beginner_explanation": "Optional contact info."
+                    },
+                    {
+                        "column_name": "rent_amount",
+                        "data_type": "numeric",
+                        "purpose": "This specific tenant's monthly rent",
+                        "beginner_explanation": "Can differ from property's default rent_amount — useful for multi-unit buildings."
+                    },
+                    {
+                        "column_name": "status",
+                        "data_type": "text",
+                        "purpose": "active or inactive",
+                        "beginner_explanation": "Only active tenants get rent_payment rows auto-generated each month."
+                    },
+                    {
+                        "column_name": "move_in_date",
+                        "data_type": "date",
+                        "purpose": "When tenant moved in",
+                        "beginner_explanation": "For reference only — doesn't trigger any automation."
+                    },
+                    {
+                        "column_name": "avatar_color",
+                        "data_type": "text",
+                        "purpose": "Hex color for the tenant's avatar initials circle",
+                        "beginner_explanation": "Randomly assigned on creation from a palette of colors. Makes the UI look varied and easy to scan."
+                    },
+                    {
+                        "column_name": "portal_user_id",
+                        "data_type": "uuid",
+                        "purpose": "The Supabase Auth user ID created for this tenant's portal account",
+                        "beginner_explanation": "This is the critical field for the tenant portal! When a tenant is invited, a new Supabase auth user is created and their ID is stored here. The useTenantData hook queries WHERE portal_user_id = auth.uid()."
+                    }
+                ],
+                "connects_to": "properties (property_id), rent_payments (tenant_id), leases (tenant_id), maintenance_tickets (tenant_id)",
+                "rls_policy": "Landlords: SELECT/UPDATE/DELETE where user_id = auth.uid(). Tenants (portal): SELECT where portal_user_id = auth.uid()",
+                "beginner_explanation": "Tenant portal data isolation works through portal_user_id. Each tenant can only see their OWN row because the RLS policy checks their auth user ID against portal_user_id."
+            },
+            {
+                "table_name": "rent_payments",
+                "purpose": "One row per tenant per month representing their rent obligation and payment status",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Unique payment record ID",
+                        "beginner_explanation": "Auto-generated."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "Landlord who owns this record",
+                        "beginner_explanation": "RLS filter."
+                    },
+                    {
+                        "column_name": "tenant_id",
+                        "data_type": "uuid",
+                        "purpose": "Which tenant this payment is for",
+                        "beginner_explanation": "Foreign key to tenants.id."
+                    },
+                    {
+                        "column_name": "property_id",
+                        "data_type": "uuid",
+                        "purpose": "Which property",
+                        "beginner_explanation": "Denormalized for query convenience."
+                    },
+                    {
+                        "column_name": "amount",
+                        "data_type": "numeric",
+                        "purpose": "Rent amount due",
+                        "beginner_explanation": "Copied from tenant.rent_amount when the row is auto-generated."
+                    },
+                    {
+                        "column_name": "due_date",
+                        "data_type": "date",
+                        "purpose": "First day of the month the rent is due",
+                        "beginner_explanation": "Auto-set to the 1st of the current month when rows are generated."
+                    },
+                    {
+                        "column_name": "status",
+                        "data_type": "text",
+                        "purpose": "pending or paid (overdue is computed at display time, not stored)",
+                        "beginner_explanation": "Overdue is NOT stored in the database. It is calculated in JavaScript: if status is not paid AND due_date < today, it is displayed as overdue."
+                    },
+                    {
+                        "column_name": "paid_date",
+                        "data_type": "date",
+                        "purpose": "Date the landlord confirmed payment was received",
+                        "beginner_explanation": "Set when landlord clicks 'Mark Paid' and picks a date."
+                    },
+                    {
+                        "column_name": "notes",
+                        "data_type": "text",
+                        "purpose": "Optional payment note (e.g. 'Bank transfer')",
+                        "beginner_explanation": "Free text field shown to landlord only."
+                    }
+                ],
+                "connects_to": "tenants (tenant_id), properties (property_id)",
+                "rls_policy": "Landlords: all operations where user_id = auth.uid(). Tenants: SELECT only where tenant_id in (SELECT id FROM tenants WHERE portal_user_id = auth.uid())",
+                "beginner_explanation": "Auto-generation logic: When the rent page loads for a month, the app checks which active tenants do NOT have a row for that month yet and inserts them automatically."
+            },
+            {
+                "table_name": "maintenance_tickets",
+                "purpose": "Tracks property maintenance issues and repair requests",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Ticket ID",
+                        "beginner_explanation": "Used in the /dashboard/maintenance/[id] dynamic route."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "Landlord owner",
+                        "beginner_explanation": "RLS filter."
+                    },
+                    {
+                        "column_name": "property_id",
+                        "data_type": "uuid",
+                        "purpose": "Affected property",
+                        "beginner_explanation": "Foreign key."
+                    },
+                    {
+                        "column_name": "tenant_id",
+                        "data_type": "uuid",
+                        "purpose": "Tenant who reported it (optional)",
+                        "beginner_explanation": "Null if landlord raised the ticket themselves."
+                    },
+                    {
+                        "column_name": "title",
+                        "data_type": "text",
+                        "purpose": "Short description of issue (e.g. 'Leaking tap')",
+                        "beginner_explanation": "Required field shown on card."
+                    },
+                    {
+                        "column_name": "description",
+                        "data_type": "text",
+                        "purpose": "Detailed description",
+                        "beginner_explanation": "Optional longer text."
+                    },
+                    {
+                        "column_name": "category",
+                        "data_type": "text",
+                        "purpose": "plumbing, electrical, painting, structural, appliance, general, other",
+                        "beginner_explanation": "Stored lowercase. Used for filtering."
+                    },
+                    {
+                        "column_name": "priority",
+                        "data_type": "text",
+                        "purpose": "high, medium, low",
+                        "beginner_explanation": "Shown as colored indicator on card — red for high, yellow for medium."
+                    },
+                    {
+                        "column_name": "status",
+                        "data_type": "text",
+                        "purpose": "open, in progress, fixed",
+                        "beginner_explanation": "Updated by landlord. Tabs on the maintenance page filter by this."
+                    },
+                    {
+                        "column_name": "raised_by",
+                        "data_type": "text",
+                        "purpose": "landlord or tenant",
+                        "beginner_explanation": "If tenant, shows an orange 'Tenant' badge on the card."
+                    },
+                    {
+                        "column_name": "receipt_url",
+                        "data_type": "text",
+                        "purpose": "Path to uploaded receipt in Supabase Storage receipts bucket",
+                        "beginner_explanation": "Just the file path, not a full URL. A signed URL is generated on demand."
+                    },
+                    {
+                        "column_name": "receipt_amount",
+                        "data_type": "numeric",
+                        "purpose": "Cost of the repair",
+                        "beginner_explanation": "When filled in, appears as a cost indicator. Resolving the ticket auto-creates an expense."
+                    }
+                ],
+                "connects_to": "properties (property_id), tenants (tenant_id), expenses (auto-created on resolution)",
+                "rls_policy": "Landlords: all operations where user_id = auth.uid(). Tenants: SELECT where property_id in tenant's property, INSERT where raised_by = tenant",
+                "beginner_explanation": "When a maintenance ticket is resolved with a cost, the detail page automatically inserts a new row into the expenses table — linking maintenance to financial records."
+            },
+            {
+                "table_name": "expenses",
+                "purpose": "Tracks all property-related costs and expenditures",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Expense ID",
+                        "beginner_explanation": "Auto-generated."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "Landlord owner",
+                        "beginner_explanation": "RLS filter."
+                    },
+                    {
+                        "column_name": "property_id",
+                        "data_type": "uuid",
+                        "purpose": "Which property the expense is for (nullable)",
+                        "beginner_explanation": "Can be null for general/unlinked expenses like accountant fees."
+                    },
+                    {
+                        "column_name": "title",
+                        "data_type": "text",
+                        "purpose": "Short expense name (e.g. 'Boiler repair')",
+                        "beginner_explanation": "Required."
+                    },
+                    {
+                        "column_name": "amount",
+                        "data_type": "numeric",
+                        "purpose": "Cost in the landlord's currency",
+                        "beginner_explanation": "Stored as decimal number."
+                    },
+                    {
+                        "column_name": "category",
+                        "data_type": "text",
+                        "purpose": "plumbing, electrical, cleaning, insurance, utilities, management fee, legal, other, general repair",
+                        "beginner_explanation": "Stored lowercase. Used for color coding and PDF grouping."
+                    },
+                    {
+                        "column_name": "date",
+                        "data_type": "date",
+                        "purpose": "Date the expense occurred",
+                        "beginner_explanation": "Defaults to today when creating a new expense."
+                    },
+                    {
+                        "column_name": "receipt_url",
+                        "data_type": "text",
+                        "purpose": "Storage path to receipt image/PDF",
+                        "beginner_explanation": "Optional. User can upload a photo of the receipt."
+                    },
+                    {
+                        "column_name": "notes",
+                        "data_type": "text",
+                        "purpose": "Optional notes about the expense",
+                        "beginner_explanation": "Free text for anything extra."
+                    }
+                ],
+                "connects_to": "properties (property_id)",
+                "rls_policy": "SELECT/INSERT/UPDATE/DELETE where user_id = auth.uid()",
+                "beginner_explanation": "The PDF export feature uses jsPDF + jspdf-autotable to generate a formatted table of all visible expenses (after filters applied) as a downloadable PDF."
+            },
+            {
+                "table_name": "leases",
+                "purpose": "Stores rental agreements between landlord and tenant with digital signing workflow",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Lease ID used in /dashboard/leases/[id] route",
+                        "beginner_explanation": "Auto-generated."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "Landlord owner",
+                        "beginner_explanation": "RLS filter."
+                    },
+                    {
+                        "column_name": "property_id",
+                        "data_type": "uuid",
+                        "purpose": "Property the lease is for",
+                        "beginner_explanation": "Foreign key."
+                    },
+                    {
+                        "column_name": "tenant_id",
+                        "data_type": "uuid",
+                        "purpose": "Tenant the lease is for",
+                        "beginner_explanation": "Foreign key."
+                    },
+                    {
+                        "column_name": "start_date",
+                        "data_type": "date",
+                        "purpose": "Lease start date",
+                        "beginner_explanation": "Required."
+                    },
+                    {
+                        "column_name": "end_date",
+                        "data_type": "date",
+                        "purpose": "Lease end date — drives expiry countdown logic",
+                        "beginner_explanation": "Days remaining = ceil((end_date - today) / 86400000). Shown in red if < 30 days, yellow if < 60."
+                    },
+                    {
+                        "column_name": "rent_amount",
+                        "data_type": "numeric",
+                        "purpose": "Monthly rent specified in this lease",
+                        "beginner_explanation": "Can differ from current tenant.rent_amount — the lease locks in the rent at signing time."
+                    },
+                    {
+                        "column_name": "status",
+                        "data_type": "text",
+                        "purpose": "draft → pending_landlord → pending_tenant → signed (or terminated/expired)",
+                        "beginner_explanation": "The signing workflow is a state machine. Each action changes the status to the next state."
+                    },
+                    {
+                        "column_name": "document_url",
+                        "data_type": "text",
+                        "purpose": "Path to uploaded lease PDF in lease-documents bucket",
+                        "beginner_explanation": "Optional PDF the landlord uploads as the official lease document."
+                    },
+                    {
+                        "column_name": "landlord_signature",
+                        "data_type": "text",
+                        "purpose": "Base64 image data of landlord's drawn signature",
+                        "beginner_explanation": "react-signature-canvas captures the signature as a PNG data URL which is stored in this text column."
+                    },
+                    {
+                        "column_name": "tenant_signature",
+                        "data_type": "text",
+                        "purpose": "Base64 image data of tenant's drawn signature",
+                        "beginner_explanation": "Same as landlord_signature but filled by the tenant via the /tenant/lease/sign page."
+                    },
+                    {
+                        "column_name": "notes",
+                        "data_type": "text",
+                        "purpose": "Optional notes about the lease",
+                        "beginner_explanation": "Free text."
+                    }
+                ],
+                "connects_to": "properties (property_id), tenants (tenant_id)",
+                "rls_policy": "Landlords: all operations where user_id = auth.uid(). Tenants: SELECT and partial update (signature only) where tenant_id in their tenant record.",
+                "beginner_explanation": "The expiry warning banner on the leases page uses a client-side calculation: filter leases where status='signed' AND days_left is between 0 and 60."
+            },
+            {
+                "table_name": "audit_log",
+                "purpose": "Records significant actions for compliance and debugging (accessed via lib/audit.ts)",
+                "columns": [
+                    {
+                        "column_name": "id",
+                        "data_type": "uuid",
+                        "purpose": "Log entry ID",
+                        "beginner_explanation": "Auto-generated."
+                    },
+                    {
+                        "column_name": "user_id",
+                        "data_type": "uuid",
+                        "purpose": "Who performed the action",
+                        "beginner_explanation": "Can be landlord or system (cron job)."
+                    },
+                    {
+                        "column_name": "action",
+                        "data_type": "text",
+                        "purpose": "Action name e.g. 'lease_status_changed', 'tenant_invited'",
+                        "beginner_explanation": "Free text describing what happened."
+                    },
+                    {
+                        "column_name": "details",
+                        "data_type": "jsonb",
+                        "purpose": "Additional context as JSON (old status, new status, tenant email, etc)",
+                        "beginner_explanation": "JSONB lets you store flexible data without needing fixed columns."
+                    },
+                    {
+                        "column_name": "ip_address",
+                        "data_type": "text",
+                        "purpose": "IP of the request (from lib/get-client-info.ts)",
+                        "beginner_explanation": "For security audit trail."
+                    },
+                    {
+                        "column_name": "created_at",
+                        "data_type": "timestamptz",
+                        "purpose": "When the action occurred",
+                        "beginner_explanation": "Auto-set by Supabase default value."
+                    }
+                ],
+                "connects_to": "N/A — append-only log table",
+                "rls_policy": "INSERT only (service role writes, users cannot read their own audit log via client)",
+                "beginner_explanation": "Every sensitive action like inviting a tenant or changing a lease status gets logged here. Good practice for any production app dealing with financial data."
+            }
+        ],
+        "how_tables_relate": "properties is the root table. tenants belong to a property. rent_payments, maintenance_tickets, leases, and expenses all have both a user_id (landlord) and property_id (property). This double reference means you can query by either landlord OR property. The tenant portal uses portal_user_id on the tenants table to link a Supabase auth account to exactly one tenant record."
+    },
+    "authentication_explained": {
+        "signup_flow": {
+            "step_by_step": [
+                "1. User fills in email + password on /signup page",
+                "2. supabase.auth.signUp({ email, password }) is called",
+                "3. Supabase creates a new row in auth.users",
+                "4. Supabase sends a confirmation email (if email confirmation is enabled in Supabase dashboard)",
+                "5. User is redirected to /dashboard",
+                "6. The useProfile hook runs, tries to fetch profile row, finds none, upserts a blank profiles row"
+            ],
+            "files_involved": [
+                "app/signup/page.tsx",
+                "hooks/useProfile.tsx"
+            ],
+            "supabase_method_used": "supabase.auth.signUp({ email, password, options: { data: { full_name } } })",
+            "what_happens_in_database": "A row is created in auth.users (managed by Supabase). A row is upserted into profiles with matching id."
+        },
+        "login_flow": {
+            "step_by_step": [
+                "1. User enters email + password on /login",
+                "2. supabase.auth.signInWithPassword({ email, password }) called",
+                "3. Supabase validates credentials and returns a session token",
+                "4. Session is stored in cookies by @supabase/ssr automatically",
+                "5. Router pushes to /dashboard",
+                "6. middleware.ts sees the session cookie on next request and allows access"
+            ],
+            "files_involved": [
+                "app/login/page.tsx",
+                "middleware.ts",
+                "lib/supabase/client.ts"
+            ],
+            "supabase_method_used": "supabase.auth.signInWithPassword({ email, password })"
+        },
+        "google_oauth_flow": {
+            "step_by_step": [
+                "1. User clicks 'Continue with Google' button",
+                "2. supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: '/auth/callback' } }) is called",
+                "3. User is redirected to Google's consent screen",
+                "4. After approval, Google redirects to /auth/callback?code=...",
+                "5. app/auth/callback/route.ts exchanges the code for a session via supabase.auth.exchangeCodeForSession(code)",
+                "6. Session is set, user is redirected to /dashboard"
+            ],
+            "setup_required": [
+                "Enable Google provider in Supabase Dashboard > Authentication > Providers",
+                "Create OAuth credentials in Google Cloud Console",
+                "Add your Supabase callback URL to Google's Authorized Redirect URIs",
+                "Add your production URL to Supabase > Authentication > URL Configuration"
+            ]
+        },
+        "middleware_protection": {
+            "what_it_does": "Intercepts every HTTP request before it reaches any page, checks for a valid Supabase session, and redirects unauthorized users",
+            "file": "middleware.ts",
+            "how_it_works": "Creates a Supabase server client from request cookies. Calls supabase.auth.getSession(). If pathname starts with /dashboard and no session → redirect to /login. If pathname starts with /tenant (except public auth pages) and no session → redirect to /tenant/login.",
+            "beginner_explanation": "The matcher config at the bottom of middleware.ts tells Next.js which URLs to run the middleware on. It runs on everything except static files (_next/static, images, etc.)."
+        },
+        "session_management": {
+            "how_session_persists": "Supabase stores the auth token in browser cookies. @supabase/ssr handles reading/writing cookies in both server components and client components. The middleware refreshes the session on every request to keep it alive.",
+            "how_to_get_current_user": "Client components: const { data: { user } } = await supabase.auth.getUser(). Server components: const supabase = await createClient() from lib/supabase/server.ts, then supabase.auth.getUser()",
+            "beginner_explanation": "You never store the user ID yourself — Supabase manages it. Any time you need to know who is logged in, you call supabase.auth.getUser() and it reads the cookie for you. Never use getSession() for security-sensitive operations; always use getUser() as it verifies the token with the server."
+        }
+    },
+    "tenant_portal_explained": {
+        "how_it_is_separate": "The tenant portal lives at /tenant/* routes with its own layout (app/tenant/layout.tsx) that has different navigation, different styling (light mode only, warm background), and completely different data access patterns. Landlord has no access to /tenant/* routes and vice versa.",
+        "tenant_invite_flow": {
+            "step_by_step": [
+                "1. Landlord goes to tenant detail page /dashboard/tenants/[id]",
+                "2. Sees 'Tenant Portal Access' card with an Invite button",
+                "3. Clicks Invite — frontend calls POST /api/tenant/invite with { tenantId }",
+                "4. API route (app/api/tenant/invite/route.ts) uses the SUPABASE_SERVICE_ROLE_KEY to call supabase.auth.admin.createUser({ email, password: randomPassword, email_confirm: true })",
+                "5. The new Supabase auth user ID is saved to tenants.portal_user_id",
+                "6. sendTenantPortalInvite() from lib/email/resend.ts sends an email with a link to /tenant/set-password",
+                "7. Tenant opens email, clicks link, sets their own password",
+                "8. Tenant can now log in at /tenant/login"
+            ]
+        },
+        "portal_user_id_explained": {
+            "what_it_is": "A UUID column on the tenants table that stores the Supabase auth user ID created for that tenant's portal account",
+            "why_needed": "Tenants log into the portal as Supabase auth users, but the app needs to know WHICH tenant record in the tenants table belongs to that logged-in user. portal_user_id is that bridge.",
+            "how_it_gets_set": "Set by the /api/tenant/invite API route after successfully creating the auth user: supabase.from('tenants').update({ portal_user_id: newUser.id }).eq('id', tenantId)"
+        },
+        "data_isolation": {
+            "how_it_works": "The useTenantData hook queries: supabase.from('tenants').select('*, properties(*)').eq('portal_user_id', user.id).single(). The RLS policy on tenants allows tenants to SELECT only rows where portal_user_id = auth.uid(). This means each tenant can only ever see their own record — and from that, can access their linked property, rent payments, and lease.",
+            "supabase_query_pattern": "supabase.from('tenants').select('*').eq('portal_user_id', user.id).single()"
+        },
+        "auth_session_3_states": {
+            "what_are_the_3_states": [
+                "undefined — session is still being checked (initial state, show blank loading screen)",
+                "null — definitely no session (redirect to /tenant/login)",
+                "Session object — authenticated (render the portal UI)"
+            ],
+            "why_3_states_needed": "If you only check for null vs session, there's a flash where null appears temporarily before the session loads — causing a redirect to login even for logged-in users. The undefined state means 'wait, still loading.'",
+            "how_implemented": "const [session, setSession] = useState<Session | null | undefined>(undefined). Supabase getSession() is async — until it resolves, state stays undefined. Once resolved, it becomes either null or a Session object."
+        },
+        "files": [
+            "app/tenant/layout.tsx — portal shell with nav and 3-state auth",
+            "app/tenant/login/page.tsx — tenant login page",
+            "app/tenant/set-password/page.tsx — first-time password setup from invite link",
+            "app/tenant/dashboard/page.tsx — tenant home screen",
+            "app/tenant/rent/page.tsx — rent history view",
+            "app/tenant/maintenance/page.tsx — maintenance requests",
+            "app/tenant/lease/page.tsx — lease details",
+            "app/tenant/lease/sign/page.tsx — digital signature page",
+            "app/api/tenant/invite/route.ts — server-side invite handler",
+            "hooks/useTenantData.ts — fetches tenant record for logged-in portal user",
+            "components/tenant/NoTenantFound.tsx — shown when portal_user_id not matched"
+        ]
+    }
+}

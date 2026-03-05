@@ -18,7 +18,7 @@ export default function TenantForgotPasswordPage() {
 
         setLoading(true)
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/tenant/set-password`,
+            redirectTo: `${window.location.origin}/auth/callback?next=/tenant/set-password`,
         })
 
         if (error) {
