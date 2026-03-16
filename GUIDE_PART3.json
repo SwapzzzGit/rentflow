@@ -134,6 +134,46 @@
                 }
             ]
         },
+        "phase_3_5_setup_wizard": {
+            "phase_name": "Setup Wizard & Onboarding",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "what_to_do": "Create types/setup.ts",
+                    "command_or_action": "Define the SetupData interface including landlord, property, and tenant fields.",
+                    "why_this_first": "Centralizing types ensures the frontend form and backend API are perfectly synced.",
+                    "beginner_tip": "Include an optional property_name field to allow nicknames like 'Baker Street Flat'."
+                },
+                {
+                    "step_number": 2,
+                    "what_to_do": "Create app/api/setup/complete/route.ts",
+                    "command_or_action": "Write a transaction-like POST handler that inserts profiles, properties, tenants, and leases using the service role key.",
+                    "why_this_first": "This 'orchestrator' API handles all the heavy lifting of creating multiple related records at once.",
+                    "beginner_tip": "Always wrap non-essential inserts (like notifications) in their own try/catch so they don't block the main flow if they fail."
+                },
+                {
+                    "step_number": 3,
+                    "what_to_do": "Update middleware.ts for setup redirection",
+                    "command_or_action": "Check profile.setup_completed and redirect authenticated users to /setup if false.",
+                    "why_this_first": "Ensures new users cannot bypass the onboarding wizard to reach an empty dashboard.",
+                    "beginner_tip": "Check the session first, then the profile. This avoids unnecessary database calls for unauthenticated users."
+                },
+                {
+                    "step_number": 4,
+                    "what_to_do": "Build the 4-step wizard UI in app/setup/page.tsx",
+                    "command_or_action": "Create StepLandlord, StepProperty, StepTenant, and StepDone components. Use a progress bar to show status.",
+                    "why_this_first": "Guided onboarding increases user retention by making initial setup feel fast and easy.",
+                    "beginner_tip": "Clear the error state when navigating between steps so old errors don't confuse the user."
+                },
+                {
+                    "step_number": 5,
+                    "what_to_do": "Implement 'Vacant' path logic",
+                    "command_or_action": "Allow users to toggle a property as vacant and finish setup immediately after Step 2.",
+                    "why_this_first": "Not all properties have active tenants immediately — the app must support both flows.",
+                    "beginner_tip": "Ensure errors are displayed on the 'Finish' button of whichever step completes the process."
+                }
+            ]
+        },
         "phase_4_dashboard_layout": {
             "phase_name": "Dashboard Layout and Sidebar",
             "steps": [
@@ -410,6 +450,24 @@
                 "what_went_wrong": "Sidebar defaulted to open (width: 240px), but on SSR it had no localStorage value yet — causing a layout shift when the client hydrated and read the saved preference.",
                 "how_it_was_fixed": "Set suppressHydrationWarning on buttons that read localStorage. Read sidebar preference in useEffect (client only) not during server render.",
                 "lesson_learned": "Never read localStorage during server-side rendering. Always do it in useEffect or with suppressHydrationWarning on affected elements."
+            },
+            {
+                "mistake": "API route using wrong database column names (assuming instead of checking)",
+                "what_went_wrong": "Inserted into 'monthly_rent' and 'name' columns, but real schema had 'rent_amount' and 'full_name'. Every initial setup call crashed the database.",
+                "how_it_was_fixed": "Verified local schema vs API logic. Corrected all 4 insert blocks to match the actual Supabase column names exactly.",
+                "lesson_learned": "Always double-check your SQL migration files against your API code. Even a simple typo like 'name' vs 'full_name' causes total failure."
+            },
+            {
+                "mistake": "Input overlap with absolute-positioned currency symbols",
+                "what_went_wrong": "The $ symbol was placed over the typed text because the input padding (pl-7) was too narrow.",
+                "how_it_was_fixed": "Increased input left padding to pl-8 (32px) and added z-10 + pointer-events-none to the symbol span to ensure it remains visible but doesn't block typing.",
+                "lesson_learned": "When overlaying icons or symbols, over-estimate padding. Users hate it when they can't see the start of their data."
+            },
+            {
+                "mistake": "Errors silently disappearing on multi-step wizard paths",
+                "what_went_wrong": "The Finish Setup button was on step 2 (vacant path), but the error display was hardcoded only on step 3. Errors occurred but the user saw no feedback.",
+                "how_it_was_fixed": "Passed the error state to all steps that have a 'Finish' or 'Submit' action, ensuring visibility regardless of which path is taken.",
+                "lesson_learned": "Error handling must be global or passed to every component that can trigger a failure. 'Silent' failures are the worst for UX."
             }
         ]
     },
