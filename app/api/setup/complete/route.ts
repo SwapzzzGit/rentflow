@@ -75,12 +75,13 @@ export async function POST(req: NextRequest) {
       .from("properties")
       .insert({
         user_id: userId,
+        name: body.property_name?.trim() || body.property_address.trim(),
         address: body.property_address.trim(),
         property_type: body.property_type,
-        bedrooms: body.bedrooms,
-        monthly_rent: body.monthly_rent,
-        status: body.property_vacant ? "vacant" : "occupied",
+        bedrooms: body.bedrooms || null,
+        rent_amount: body.monthly_rent,
         currency: body.currency,
+        status: body.property_vacant ? "vacant" : "occupied",
         created_at: new Date().toISOString(),
       })
       .select("id")
@@ -103,12 +104,13 @@ export async function POST(req: NextRequest) {
         .insert({
           user_id: userId,
           property_id: property.id,
-          name: body.tenant_name.trim(),
+          full_name: body.tenant_name.trim(),
           email: body.tenant_email?.trim() || null,
           phone: body.tenant_phone?.trim() || null,
           move_in_date: body.move_in_date || null,
           rent_amount: body.monthly_rent,
           status: "active",
+          avatar_color: "#6366f1",
           created_at: new Date().toISOString(),
         })
         .select("id")
@@ -133,7 +135,7 @@ export async function POST(req: NextRequest) {
             tenant_id: tenant.id,
             start_date: body.move_in_date,
             end_date: leaseEndDate,
-            monthly_rent: body.monthly_rent,
+            rent_amount: body.monthly_rent, // Corrected column name
             status: "active",
             created_at: new Date().toISOString(),
           });
@@ -148,16 +150,20 @@ export async function POST(req: NextRequest) {
           if (leaseEndDate) {
             const daysUntilExpiry = getDaysUntil(leaseEndDate);
             if (daysUntilExpiry <= 60 && daysUntilExpiry > 0) {
-              await supabaseAdmin.from("notifications").insert({
-                user_id: userId,
-                type: "lease_expiring",
-                title: `${body.tenant_name}'s lease expires in ${daysUntilExpiry} days`,
-                message: `The lease for ${body.property_address} expires on ${formatDate(leaseEndDate)}.`,
-                property_id: property.id,
-                tenant_id: tenant.id,
-                is_read: false,
-                created_at: new Date().toISOString(),
-              });
+              try {
+                await supabaseAdmin.from("notifications").insert({
+                  user_id: userId,
+                  type: "lease_expiring",
+                  title: `${body.tenant_name}'s lease expires in ${daysUntilExpiry} days`,
+                  message: `The lease for ${body.property_address} expires on ${formatDate(leaseEndDate)}.`,
+                  property_id: property.id,
+                  tenant_id: tenant.id,
+                  is_read: false,
+                  created_at: new Date().toISOString(),
+                });
+              } catch (notifError) {
+                console.warn("Notification insert skipped:", notifError);
+              }
             }
           }
         }
@@ -248,11 +254,10 @@ function buildCurrentMonthRentRow({
     user_id: userId,
     property_id: propertyId,
     tenant_id: tenantId,
-    tenant_name: tenantName,
     amount: monthlyRent,
-    currency,
     due_date: dueDate,
     status: "pending",
+    // These columns were added in SQL
     month: now.getMonth() + 1,
     year: now.getFullYear(),
     created_at: new Date().toISOString(),

@@ -12,10 +12,10 @@
                 },
                 {
                     "step_number": 2,
-                    "what_to_do": "Install all dependencies",
-                    "command_or_action": "npm install @supabase/ssr @supabase/supabase-js lucide-react react-hot-toast next-themes jspdf jspdf-autotable date-fns recharts zod react-hook-form @hookform/resolvers resend",
+                    "what_to_do": "Install all dependencies & UI primitives",
+                    "command_or_action": "npm install @supabase/ssr @supabase/supabase-js lucide-react sonner react-hot-toast next-themes jspdf jspdf-autotable pdf-lib date-fns recharts zod react-hook-form @hookform/resolvers resend cmdk input-otp embla-carousel-react",
                     "why_this_first": "Get all libraries installed before writing any code so imports work",
-                    "beginner_tip": "If a package is not found, check the exact name on npmjs.com"
+                    "beginner_tip": "In a real project, you would also use 'npx shadcn@latest add ...' to add your UI primitives (like buttons, dialogs, form components, etc.)"
                 },
                 {
                     "step_number": 3,
@@ -73,10 +73,10 @@
                 },
                 {
                     "step_number": 3,
-                    "what_to_do": "Build landing page components (hero, navbar, pricing, footer)",
-                    "command_or_action": "Create components/hero.tsx, components/navbar.tsx, components/pricing.tsx, components/footer.tsx",
+                    "what_to_do": "Build landing page components",
+                    "command_or_action": "Create components/hero.tsx, components/navbar.tsx, components/pricing.tsx, components/footer.tsx, alternating-features.tsx, features-bento.tsx, testimonials.tsx",
                     "why_this_first": "Landing page is the first thing users see — build it to test that the app runs",
-                    "beginner_tip": "Start with just static HTML. Add animations and styling after the basic structure works."
+                    "beginner_tip": "Start with just static HTML. Add animations and styling after the basic structure works. Break complex layouts into reusable blocks."
                 },
                 {
                     "step_number": 4,
@@ -120,6 +120,13 @@
                 },
                 {
                     "step_number": 5,
+                    "what_to_do": "Create app/reset-password/page.tsx",
+                    "command_or_action": "Call supabase.auth.updateUser({ password: newPassword }) after user clicks the reset link",
+                    "why_this_first": "Without this, the forgot password email link has nowhere to go.",
+                    "beginner_tip": "Supabase redirects the user here. Update the password then redirect to the dashboard or login."
+                },
+                {
+                    "step_number": 6,
                     "what_to_do": "Create hooks/useProfile.tsx as a Context provider",
                     "command_or_action": "Create ProfileContext, ProfileProvider, and useProfile hook. Fetch from profiles table on mount.",
                     "why_this_first": "The dashboard layout needs the user's name, avatar, and plan to display in the sidebar",
@@ -513,6 +520,16 @@
             }
         ],
         "learn_while_building": [
+            {
+                "concept": "Form Validation (react-hook-form & zod)",
+                "when_you_will_encounter_it": "When building any forms (login, signup, add property, tickets).",
+                "beginner_tip": "zod defines the schema constraints (e.g. 'email must be valid'). react-hook-form handles state and submission without causing slow re-renders."
+            },
+            {
+                "concept": "Component Libraries (shadcn/ui)",
+                "when_you_will_encounter_it": "When assembling forms, modals, tables, toasts, and menus.",
+                "beginner_tip": "shadcn/ui gives you the code for accessible Radix components into your components/ui folder so you fully own and can customize their styling."
+            },
             {
                 "concept": "React Context API",
                 "when_you_will_encounter_it": "When building useProfile.tsx (Phase 3). Context shares data across many components without prop drilling.",

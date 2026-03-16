@@ -70,6 +70,7 @@ const DEFAULT_DATA: SetupData = {
   currency_symbol: '£',
   country: '',
   property_address: '',
+  property_name: '',
   property_type: '',
   bedrooms: 1,
   monthly_rent: 0,
@@ -163,16 +164,17 @@ export default function SetupPage() {
         {step === 1 && (
           <StepLandlord
             data={data}
-            onNext={(updates) => { patch(updates); setStep(2) }}
+            onNext={(updates) => { patch(updates); setError(null); setStep(2) }}
           />
         )}
 
         {step === 2 && (
           <StepProperty
             data={data}
-            onNext={(updates) => { patch(updates); setStep(3) }}
-            onBack={() => setStep(1)}
+            onNext={(updates) => { patch(updates); setError(null); setStep(3) }}
+            onBack={() => { setError(null); setStep(1) }}
             onSkip={(updates) => finishSetup({ ...updates, property_vacant: true })}
+            error={error}
           />
         )}
 
@@ -180,7 +182,7 @@ export default function SetupPage() {
           <StepTenant
             data={data}
             onSubmit={(updates) => finishSetup(updates)}
-            onBack={() => setStep(2)}
+            onBack={() => { setError(null); setStep(2) }}
             loading={loading}
             error={error}
           />

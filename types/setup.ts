@@ -10,6 +10,7 @@ export interface SetupData {
 
   // ── Property ──────────────────────────────────────────────────────────────
   property_address: string;
+  property_name: string;
   property_type: string;     // e.g. "apartment", "house"
   bedrooms: number;
   monthly_rent: number;
