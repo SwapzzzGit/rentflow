@@ -13,18 +13,26 @@ import { Testimonials } from "@/components/testimonials"
 import { FinalCTA } from "@/components/final-cta"
 import { Footer } from "@/components/footer"
 import { ScrollRevealInit } from "@/components/scroll-reveal"
+import { cookies } from 'next/headers'
+import { getGeoConfig, parseCountryCookie } from '@/lib/geo'
+
+export const dynamic = 'force-dynamic'
 
 function SectionDivider() {
   return <div className="section-divider mx-auto max-w-5xl" />
 }
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies()
+  const countryCode = parseCountryCookie(cookieStore.get('geo_country')?.value)
+  const geoConfig = getGeoConfig(countryCode)
+
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#080808]">
       <BackgroundCanvas />
       <ScrollRevealInit />
       <Navbar />
-      <Hero />
+      <Hero geoConfig={geoConfig} />
       <ProductMockup />
       <TrustBar />
       <SectionDivider />
@@ -38,7 +46,7 @@ export default function Home() {
       <SectionDivider />
       <GlobalReach />
       <SectionDivider />
-      <Pricing />
+      <Pricing geoConfig={geoConfig} />
       <SectionDivider />
       <Testimonials />
       <FinalCTA />

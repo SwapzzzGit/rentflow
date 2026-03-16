@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SetupData } from '@/types/setup'
 import { WizardCard, WizardField, WizardSelect, WizardCTA } from './WizardShared'
+import { getGeoConfig, parseCountryCookie } from '@/lib/geo'
 
 const CURRENCIES = [
   { value: 'GBP', label: '£ British Pound (GBP)', symbol: '£' },
@@ -30,6 +31,28 @@ export function StepLandlord({
   const [fullName, setFullName] = useState(data.full_name ?? '')
   const [currency, setCurrency] = useState(data.currency ?? 'GBP')
   const [country, setCountry] = useState(data.country ?? '')
+
+  useEffect(() => {
+    // Only pre-fill if hasn't started typing and values are currently defaults
+    if (fullName) return
+
+    const cookies = document.cookie.split(';').reduce((acc, c) => {
+      const [k, v] = c.trim().split('=')
+      if (k) acc[k] = v
+      return acc
+    }, {} as Record<string, string>)
+
+    const countryCode = parseCountryCookie(cookies['geo_country'])
+    if (!countryCode) return
+
+    const config = getGeoConfig(countryCode)
+
+    // If user hasn't touched the defaults yet, pre-fill from geo
+    if (currency === 'GBP' && (country === '' || country === 'United Kingdom')) {
+      setCurrency(config.currency)
+      setCountry(config.country_name)
+    }
+  }, [])
 
   const canContinue = fullName.trim().length > 0 && !!currency && !!country
 

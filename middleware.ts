@@ -23,6 +23,24 @@ export async function middleware(request: NextRequest) {
     )
 
     const { data: { session } } = await supabase.auth.getSession()
+ 
+    // ── Geo detection ─────────────────────────────────────────────────────────
+    // Read country from Vercel header or ?country= query param (for local testing)
+    const queryCountry = request.nextUrl.searchParams.get('country')?.toUpperCase()
+    const vercelCountry = request.headers.get('x-vercel-ip-country')?.toUpperCase()
+    const detectedCountry = queryCountry || vercelCountry || 'US'
+ 
+    // Set geo_country cookie if not already set or if query param overrides it
+    const existingCountryCookie = request.cookies.get('geo_country')?.value
+    if (!existingCountryCookie || queryCountry) {
+        response.cookies.set('geo_country', detectedCountry, {
+            path: '/',
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+            sameSite: 'lax',
+            httpOnly: false, // Must be false — client components need to read it
+        })
+    }
+    // ── End geo detection ────────────────────────────────────────────────────
 
     // ── Public landlord auth pages (no session required) ──────────────────────
     const publicLandlordPages = ['/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback']

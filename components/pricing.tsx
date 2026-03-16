@@ -3,12 +3,13 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Check } from "lucide-react"
+import { GeoConfig, getGeoConfig } from "@/lib/geo"
 
-const plans = [
+const basePlans = [
   {
     name: "Free",
-    priceMonthly: "$0",
-    priceAnnual: "$0",
+    priceMonthly: "0",
+    priceAnnual: "0",
     tagline: "Get started, no strings",
     features: [
       "1 property",
@@ -21,8 +22,6 @@ const plans = [
   },
   {
     name: "Starter",
-    priceMonthly: "$9.99",
-    priceAnnual: "$7.99",
     tagline: "For the serious landlord",
     badge: "Most Popular",
     features: [
@@ -32,7 +31,7 @@ const plans = [
       "Expense tracker + receipts",
       "Maintenance request portal",
       "Tenant messaging",
-      "PDF tax export",
+      "TAX_LABEL-ready expense reports",
       "Priority support",
     ],
     ctaText: "Start Free Trial",
@@ -40,8 +39,6 @@ const plans = [
   },
   {
     name: "Pro",
-    priceMonthly: "$17.99",
-    priceAnnual: "$14.99",
     tagline: "For growing portfolios",
     features: [
       "Unlimited properties",
@@ -58,8 +55,32 @@ const plans = [
   },
 ]
 
-export function Pricing() {
+export function Pricing({ geoConfig = getGeoConfig(null) }: { geoConfig?: GeoConfig }) {
   const [annual, setAnnual] = useState(false)
+
+  const plans = basePlans.map((plan, i) => {
+    let monthly = "0"
+    let annual_price = "0"
+    const symbol = geoConfig.pricing_currency_label
+
+    if (plan.name === "Free") {
+      monthly = `${symbol}0`
+      annual_price = `${symbol}0`
+    } else if (plan.name === "Starter") {
+      monthly = `${symbol}${geoConfig.pricing_starter}`
+      annual_price = `${symbol}${Math.round(geoConfig.pricing_starter * 0.8)}`
+    } else {
+      monthly = `${symbol}${geoConfig.pricing_pro}`
+      annual_price = `${symbol}${Math.round(geoConfig.pricing_pro * 0.8)}`
+    }
+
+    return {
+      ...plan,
+      priceMonthly: monthly,
+      priceAnnual: annual_price,
+      features: plan.features.map(f => f.replace('TAX_LABEL', geoConfig.tax_label))
+    }
+  })
 
   return (
     <section id="pricing" className="px-6 py-20 md:py-24">

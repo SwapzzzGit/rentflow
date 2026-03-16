@@ -4,6 +4,9 @@ import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
+import { cookies } from 'next/headers'
+import { getGeoConfig, parseCountryCookie } from '@/lib/geo'
+ 
 const dmSans = DM_Sans({
   subsets: ['latin'],
   variable: '--font-dm-sans',
@@ -19,9 +22,15 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains',
 })
 
-export const metadata: Metadata = {
-  title: 'RentFlow - Your Shortcut to Effortless Landlording',
-  description: 'One app replaces five tools. Rent tracking, expenses, maintenance, and tenant communication for landlords in the US, UK, and Australia.',
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies()
+  const countryCode = parseCountryCookie(cookieStore.get('geo_country')?.value)
+  const geoConfig = getGeoConfig(countryCode)
+ 
+  return {
+    title: geoConfig.meta_title,
+    description: geoConfig.meta_description,
+  }
 }
 
 export const viewport: Viewport = {
