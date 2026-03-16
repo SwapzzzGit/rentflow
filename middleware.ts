@@ -30,10 +30,36 @@ export async function middleware(request: NextRequest) {
         return response
     }
 
+    // ── /setup — wizard page ──────────────────────────────────────────────────
+    if (pathname.startsWith('/setup')) {
+        if (!session) {
+            return NextResponse.redirect(new URL('/login', request.url))
+        }
+        // If already completed setup, send to dashboard
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('setup_completed')
+            .eq('id', session.user.id)
+            .single()
+        if (profile?.setup_completed) {
+            return NextResponse.redirect(new URL('/dashboard', request.url))
+        }
+        return response
+    }
+
     // ── /dashboard/* ─────────────────────────────────────────────────────────
     if (pathname.startsWith('/dashboard')) {
         if (!session) {
             return NextResponse.redirect(new URL('/login', request.url))
+        }
+        // If setup not completed, redirect to wizard
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('setup_completed')
+            .eq('id', session.user.id)
+            .single()
+        if (!profile?.setup_completed) {
+            return NextResponse.redirect(new URL('/setup', request.url))
         }
         return response
     }

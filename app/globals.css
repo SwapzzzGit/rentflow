@@ -232,3 +232,42 @@ html.light {
   --dash-expense-text: #333333;
   --dash-toggle-track: rgba(0, 0, 0, 0.12);
 }
+
+/* ===== Setup Wizard Styles ===== */
+/* Wizard always renders in light mode outside the dashboard layout */
+.wizard-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  color: #0a0a0a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.wizard-input::placeholder {
+  color: #94a3b8;
+}
+
+.wizard-input:hover:not(:focus) {
+  border-color: #cbd5e1;
+}
+
+.wizard-input:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
+}
+
+/* Remove number input spinners */
+.wizard-input[type="number"]::-webkit-inner-spin-button,
+.wizard-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.wizard-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

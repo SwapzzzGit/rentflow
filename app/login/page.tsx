@@ -22,13 +22,19 @@ export default function LoginPage() {
         setError('')
         setLoading(true)
 
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password })
         setLoading(false)
 
         if (error) {
             setError(error.message)
         } else {
-            router.push('/dashboard')
+            // Route to /setup if onboarding not yet done, else /dashboard
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('setup_completed')
+                .eq('id', authData.user!.id)
+                .single()
+            router.push(profile?.setup_completed ? '/dashboard' : '/setup')
             router.refresh()
         }
     }

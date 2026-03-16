@@ -1,14 +1,16 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { AlertCircle, CheckCircle2, DollarSign, Building2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, DollarSign, Building2, Calendar, Clock, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { EmptyState } from '@/components/ui/empty-state'
 import Link from 'next/link'
 
 type RentRow = { id: string; amount: number; due_date: string; status: string; paid_date: string | null; tenant?: { full_name: string; avatar_color: string }; property?: { name: string } }
 type Expense = { id: string; title: string; amount: number; date: string; category: string }
 type MainticketRow = { id: string; title: string; status: string; property?: { name: string } }
+type UrgentItem = { id: string; type: 'rent' | 'maintenance' | 'lease'; title: string; subtitle: string; date?: string; link: string }
 
 const AVATAR_COLORS = ['#E8392A', '#6366F1', '#22C55E', '#F59E0B']
 
@@ -27,6 +29,7 @@ export default function DashboardPage() {
     const [recentRents, setRecentRents] = useState<RentRow[]>([])
     const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
     const [maintenanceSummary, setMaintenanceSummary] = useState<MainticketRow[]>([])
+    const [urgentItems, setUrgentItems] = useState<UrgentItem[]>([])
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -36,11 +39,14 @@ export default function DashboardPage() {
         const now = new Date()
         const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
         const firstOfNext = `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`
+        const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
         const [
             { data: rentRows },
             { data: expenses },
             { data: tickets },
+            { data: overdueRents },
+            { data: expiringLeases },
         ] = await Promise.all([
             supabase.from('rent_payments')
                 .select('*, tenant:tenants(full_name, avatar_color), property:properties(name)')
@@ -58,6 +64,19 @@ export default function DashboardPage() {
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(4),
+            supabase.from('rent_payments')
+                .select('*, tenant:tenants(full_name), property:properties(name)')
+                .eq('user_id', user.id)
+                .eq('status', 'pending')
+                .lt('due_date', now.toISOString().split('T')[0])
+                .limit(2),
+            supabase.from('leases')
+                .select('*, property:properties(name), tenant:tenants(full_name)')
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .lte('end_date', sixtyDaysFromNow)
+                .gte('end_date', now.toISOString().split('T')[0])
+                .limit(2),
         ])
 
         const rents = (rentRows || []) as RentRow[]
@@ -73,10 +92,50 @@ export default function DashboardPage() {
         setMonthlyCollected(collected)
         setPaidCount(rents.filter(r => r.status === 'paid').length)
         setTotalCount(rents.length)
-        setOpenIssues(tks.filter(t => t.status === 'open').length)
+        setOpenIssues(tks.filter(t => t.status === 'open' || t.status === 'in progress').length)
         setRecentRents(rents.slice(0, 5).map(r => ({ ...r, status: effectiveStatus(r) })))
         setRecentExpenses(exps)
         setMaintenanceSummary(tks)
+
+        // Build Urgent Items
+        const urgent: UrgentItem[] = [];
+        
+        // Add Overdue Rents
+        (overdueRents || []).forEach((r: any) => {
+            urgent.push({
+                id: r.id,
+                type: 'rent',
+                title: `Overdue: ${r.property?.name || 'Property'}`,
+                subtitle: `${r.tenant?.full_name} is overdue by $${r.amount}`,
+                date: r.due_date,
+                link: '/dashboard/rent'
+            })
+        });
+
+        // Add Open Tickets
+        tks.filter(t => t.status === 'open').forEach(t => {
+            urgent.push({
+                id: t.id,
+                type: 'maintenance',
+                title: `Open Ticket: ${t.title}`,
+                subtitle: `At ${t.property?.name || 'Property'}`,
+                link: '/dashboard/maintenance'
+            })
+        });
+
+        // Add Expiring Leases
+        (expiringLeases || []).forEach((l: any) => {
+            urgent.push({
+                id: l.id,
+                type: 'lease',
+                title: 'Lease Expiring Soon',
+                subtitle: `${l.tenant?.full_name} at ${l.property?.name}`,
+                date: l.end_date,
+                link: '/dashboard/leases'
+            })
+        })
+
+        setUrgentItems(urgent.slice(0, 3))
         setLoading(false)
     }, [supabase])
 
@@ -118,10 +177,40 @@ export default function DashboardPage() {
         <div className="w-full px-4 py-4 md:px-8 md:py-6 space-y-4 md:space-y-6" style={{ transition: 'background-color 200ms ease' }}>
 
             {/* Header */}
-            <div>
-                <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ fontFamily: 'var(--font-bricolage)', color: 'var(--dash-text)' }}>Dashboard</h1>
-                <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>Here&apos;s what&apos;s happening with your properties.</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ fontFamily: 'var(--font-bricolage)', color: 'var(--dash-text)' }}>Dashboard</h1>
+                    <p className="text-sm" style={{ color: 'var(--dash-muted)' }}>Here&apos;s what&apos;s happening with your properties.</p>
+                </div>
+                {/* Today / Summary Button (Mobile) */}
+                <div className="md:hidden">
+                    <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#E8392A]/10 text-[#E8392A] text-xs font-bold border border-[#E8392A]/20">
+                        {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · Today
+                    </div>
+                </div>
             </div>
+
+            {/* Today's Attention Section */}
+            {!loading && urgentItems.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {urgentItems.map((item) => (
+                        <Link key={item.id} href={item.link} className="flex flex-col gap-1 p-4 rounded-2xl border transition-all hover:scale-[1.01] active:scale-[0.99]"
+                            style={{ background: 'var(--dash-card-bg)', borderColor: 'var(--dash-card-border)' }}>
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                    {item.type === 'rent' && <Clock className="w-4 h-4 text-[#E8392A]" />}
+                                    {item.type === 'maintenance' && <AlertCircle className="w-4 h-4 text-amber-500" />}
+                                    {item.type === 'lease' && <Calendar className="w-4 h-4 text-blue-500" />}
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{item.type}</span>
+                                </div>
+                                <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
+                            </div>
+                            <h4 className="text-sm font-bold truncate" style={{ color: 'var(--dash-text)' }}>{item.title}</h4>
+                            <p className="text-xs truncate" style={{ color: 'var(--dash-muted)' }}>{item.subtitle}</p>
+                        </Link>
+                    ))}
+                </div>
+            )}
 
             {/* fix: stat_cards_grid — grid-cols-1 mobile, grid-cols-3 md+ */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
@@ -165,7 +254,15 @@ export default function DashboardPage() {
                         {[1, 2, 3].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: 'var(--dash-nav-hover)' }} />)}
                     </div>
                 ) : recentRents.length === 0 ? (
-                    <p className="text-center py-10 text-sm" style={{ color: 'var(--dash-muted)' }}>No rent data for {monthLabel}. Add active tenants to track rent.</p>
+                    <div className="py-6">
+                        <EmptyState 
+                            icon={DollarSign}
+                            title="No rent data for this month"
+                            description="Add active tenants to start tracking their monthly rent payments."
+                            actionLabel="Add Property"
+                            onAction={() => window.location.href = '/dashboard/properties'}
+                        />
+                    </div>
                 ) : recentRents.map((row, idx) => (
                     // fix: recent_rent_row_layout — flex w-full, avatar flex-shrink-0, name flex-1 min-w-0, amount+badge ml-auto flex-shrink-0
                     <div
@@ -214,7 +311,7 @@ export default function DashboardPage() {
                         {loading
                             ? [1, 2, 3].map(i => <div key={i} className="h-10 my-2 rounded-lg animate-pulse" style={{ background: 'var(--dash-nav-hover)' }} />)
                             : recentExpenses.length === 0
-                                ? <p className="text-sm text-center py-8" style={{ color: 'var(--dash-muted)' }}>No expenses recorded yet.</p>
+                                ? <div className="py-8"><EmptyState icon={DollarSign} title="No expenses" description="You haven't logged any expenses yet." /></div>
                                 : recentExpenses.map((exp, i) => (
                                     <div key={exp.id} className="flex items-center justify-between gap-3 py-3.5" style={{ borderBottom: i < recentExpenses.length - 1 ? '1px solid var(--dash-divider)' : 'none' }}>
                                         {/* Title + meta — min-w-0 to allow truncation */}
@@ -243,7 +340,7 @@ export default function DashboardPage() {
                         {loading
                             ? [1, 2, 3].map(i => <div key={i} className="h-10 my-2 rounded-lg animate-pulse" style={{ background: 'var(--dash-nav-hover)' }} />)
                             : maintenanceSummary.length === 0
-                                ? <p className="text-sm text-center py-8" style={{ color: 'var(--dash-muted)' }}>No maintenance tickets yet.</p>
+                                ? <div className="py-8"><EmptyState icon={AlertCircle} title="No tickets" description="Maintenance requests will appear here." /></div>
                                 : maintenanceSummary.map((item, i) => (
                                     <div key={item.id} className="flex items-center justify-between gap-3 py-3.5" style={{ borderBottom: i < maintenanceSummary.length - 1 ? '1px solid var(--dash-divider)' : 'none' }}>
                                         {/* Title + property — min-w-0 */}

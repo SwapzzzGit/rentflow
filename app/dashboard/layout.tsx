@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { ProfileProvider, useProfile } from '@/hooks/useProfile'
 import { getTheme, applyTheme, toggleTheme as themeToggle, Theme, getEffectiveTheme } from '@/lib/theme'
+import { OnboardingChecklist } from '@/components/setup/OnboardingChecklist'
 import {
     LayoutDashboard,
     Building2,
@@ -305,6 +306,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </header>
 
                     <div className="max-w-[1600px] mx-auto">
+                        <OnboardingChecklist />
                         {children}
                     </div>
 
